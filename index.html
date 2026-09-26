@@ -611,6 +611,8 @@
         </div>
         <div class="row">
           <button class="btn btn--go" id="startBtn">▶ 開始</button>
+          <button class="btn" id="pickBtn" type="button" hidden>音声ファイルを選ぶ</button>
+          <input type="file" id="pickFile" accept="audio/*,.mp3,.wav,.m4a" hidden>
           <span class="src" id="bootMsg">音声エンジン待機中</span>
         </div>
         <div class="howto">
@@ -1617,6 +1619,15 @@
     }).catch(function(e){delete embeddedPending[key];throw e;});
     return embeddedPending[key];
   }
+  // Say exactly which file is missing, so a local copy can be fixed without guessing.
+  function loadFailText(key, httpErr, dataErr){
+    var mp3 = TRACKS[key].url, data = key + ".data.js", why;
+    if (dataErr && dataErr.message === "音声データがありません") why = data + " は読めましたが、中身が " + key + " 用ではありません";
+    else if (dataErr && dataErr.name === "EncodingError") why = "音声データを再生できない形式です";
+    else if (location.protocol === "file:") why = "ダブルクリックで開いているため " + mp3 + " は直接読めず、" + data + " も index.html と同じフォルダに見つかりません";
+    else why = mp3 + " を読み込めません（" + (httpErr && httpErr.message || "不明") + "）。" + data + " も見つかりません";
+    return why;
+  }
   function loadTrack(key){
     var def = TRACKS[key];
     if (bufCache[key]) return Promise.resolve(bufCache[key]);
@@ -1626,7 +1637,10 @@
       pendCache[key] = (location.protocol === "file:" ? Promise.reject(new Error("local file")) : fetch(def.url))
         .then(function(r){ if (!r.ok) throw new Error("HTTP " + r.status); return r.arrayBuffer(); })
         .then(function(ab){ return ctx.decodeAudioData(ab); })
-        .catch(function(){return loadEmbedded(key).then(function(ab){return ctx.decodeAudioData(ab.slice(0));});})
+        .catch(function(e1){
+          return loadEmbedded(key).then(function(ab){return ctx.decodeAudioData(ab.slice(0));})
+            .catch(function(e2){ throw new Error(loadFailText(key, e1, e2)); });
+        })
         .then(function(b){ bufCache[key] = b; return b; })
         .catch(function(e){ pendCache[key] = null; throw e; });
     }
@@ -2122,15 +2136,31 @@
     var key=selectedKey;
     srcName.textContent="SOURCE: "+trackLabel(key);
     bootMsg.textContent="課題曲「"+TRACKS[key].name+"」を読み込み中…";
+    $("pickBtn").hidden=true;
     loadTrack(key).then(function(buf){
       if(selectedKey===key && mode==="idle")bootMsg.textContent="課題曲「"+TRACKS[key].name+"」の課題を解析中…";
       return chartFor(key,buf);
     }).then(function(){
       if(selectedKey===key && mode==="idle")bootMsg.textContent="課題曲「"+TRACKS[key].name+"」— ▶ 開始 を押してください";
-    }).catch(function(){
-      if(selectedKey===key && mode==="idle")bootMsg.textContent="この曲を読み込めませんでした（内蔵デモで再生します）";
+    }).catch(function(e){
+      if(selectedKey===key && mode==="idle"){
+        bootMsg.textContent="「"+TRACKS[key].name+"」を読み込めません："+e.message+"。このまま開始すると内蔵デモになります。「音声ファイルを選ぶ」で直接指定もできます。";
+        $("pickBtn").hidden=false;
+      }
     });
   }
+  // Manual fallback: decode a file the player picks and use it for the selected track.
+  $("pickBtn").addEventListener("click",function(){ $("pickFile").click(); });
+  $("pickFile").addEventListener("change",function(){
+    var f=this.files&&this.files[0], key=selectedKey;this.value="";
+    if(!f||mode!=="idle")return;
+    bootMsg.textContent="「"+f.name+"」を読み込み中…";
+    ensureCtx();
+    f.arrayBuffer().then(function(ab){return ctx.decodeAudioData(ab);}).then(function(buf){
+      bufCache[key]=buf;pendCache[key]=null;delete chartCache[key];delete chartPending[key];
+      if(selectedKey===key)preloadSelection();
+    }).catch(function(){ if(selectedKey===key)bootMsg.textContent="「"+f.name+"」を音声として読み込めませんでした。"; });
+  });
   for(var ri=0;ri<trkRadios.length;ri++)trkRadios[ri].addEventListener("change",function(){
     if(mode!=="idle")return;selectedKey=this.value;preloadSelection();
   });
