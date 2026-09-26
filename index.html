@@ -460,7 +460,8 @@
   }
 
   /* ---------- in-session: the whole console fits one screen; the scope takes what is left ---------- */
-  body.in-session{padding-block:8px}
+  body.in-session{padding-block:8px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center}
+  body.in-session .wrap{width:100%}
   body.in-session .note,body.in-session .shape-feedback,body.in-session .guide{display:none}
   body.in-session .unit{padding:10px 18px 10px}
   body.in-session .screw{display:none}
@@ -470,10 +471,10 @@
   body.in-session .scope{aspect-ratio:auto;min-height:0}
   body.in-session .xy{width:auto;height:calc(100% - 40px);max-width:42%}
   body.in-session .meters{margin-top:8px}
-  body.in-session .m{padding:5px 10px 6px}
-  body.in-session .m__lab{margin-bottom:2px}
-  body.in-session .m__val{font-size:15px}
-  body.in-session .m__bar{height:9px;margin-top:4px}
+  body.in-session .m{padding:6px 10px 8px}
+  body.in-session .m__lab{margin-bottom:3px}
+  body.in-session .m__val{font-size:16px}
+  body.in-session .m__bar{height:14px;margin-top:5px}
   body.in-session .performance{
     margin-top:8px;padding:8px 12px;display:grid;column-gap:22px;
     grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);
@@ -486,9 +487,9 @@
   body.in-session .precision-head{grid-area:ph;margin-top:0}
   body.in-session .precision-readout{grid-area:pr;margin:3px 0 5px;display:flex;flex-direction:column;align-items:flex-start}
   body.in-session #stabilityTrack{grid-area:st;align-self:end;height:8px;margin-top:0}
-  body.in-session .controls{margin-top:8px;padding:8px 12px 2px;gap:8px 24px}
-  body.in-session .fader__top{margin-bottom:2px}
-  body.in-session .gr{margin-top:4px}
+  body.in-session .controls{margin-top:10px;padding:10px 12px 4px;gap:10px 24px}
+  body.in-session .fader__top{margin-bottom:5px}
+  body.in-session .gr{margin-top:6px}
   body.in-session .bay{margin-top:8px;padding-top:8px}
   body.in-session .bay .btn{padding:7px 16px}
   body.in-session .score b{font-size:19px}
@@ -501,11 +502,11 @@
     body.in-session .se-toggle{padding:2px 7px;font-size:11px}
     body.in-session .xy{height:calc(100% - 32px);max-width:48%;top:26px}
     body.in-session .meters{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:6px}
-    body.in-session .m{padding:4px 5px 5px}
-    body.in-session .m__lab{font-size:8.5px;letter-spacing:.04em}
+    body.in-session .m{padding:5px 6px 6px}
+    body.in-session .m__lab{font-size:9px;letter-spacing:.04em}
     body.in-session .m__lab span+span{display:none}
-    body.in-session .m__val{font-size:12.5px}
-    body.in-session .m__bar{height:7px;margin-top:3px}
+    body.in-session .m__val{font-size:14px}
+    body.in-session .m__bar{height:11px;margin-top:4px}
     body.in-session .performance{margin-top:6px;padding:6px 9px;font-size:10.5px;
       grid-template-columns:minmax(0,1fr);grid-template-areas:"c" "mh" "md" "mt" "ph" "pr" "st"}
     body.in-session .client-row{margin-bottom:4px;padding-bottom:4px}
@@ -516,20 +517,30 @@
     body.in-session #precisionRange{display:none}
     body.in-session .precision-readout{margin:0 0 3px;flex-direction:row}
     body.in-session #stabilityTrack{height:5px}
-    body.in-session .controls{margin-top:6px;padding:6px 4px 0;gap:4px}
+    body.in-session .controls{margin-top:8px;padding:6px 4px 0;gap:8px}
     body.in-session .fader__top{align-items:baseline;margin-bottom:0}
-    body.in-session .fader__name{flex-direction:row;align-items:baseline;gap:6px;font-size:12px}
-    body.in-session .fader__name i{font-size:10px}
-    body.in-session .fader__val{font-size:13px}
-    body.in-session input[type=range]{height:28px}
-    body.in-session .ticks{display:none}
-    body.in-session .gr{margin-top:0;font-size:10px}
+    body.in-session .fader__name{flex-direction:row;align-items:baseline;gap:6px;font-size:13px}
+    body.in-session .fader__name i{font-size:10.5px}
+    body.in-session .fader__val{font-size:15px}
+    body.in-session input[type=range]{height:44px}             /* 指で掴める高さ */
+    body.in-session .ticks{margin-top:-6px;font-size:10px}
+    body.in-session .gr{margin-top:3px;font-size:10.5px}
     body.in-session .bay{margin-top:6px;padding-top:6px;grid-template-columns:1fr 1fr 1.15fr;gap:6px}
     body.in-session .bay .btn{min-height:38px;padding:6px 6px;font-size:12px}
     body.in-session .bay .src{display:none}
     body.in-session .bay .score{grid-column:auto;padding:3px 8px}
     body.in-session .score span{font-size:9px;letter-spacing:.12em}
     body.in-session .score b{font-size:16px}
+  }
+  @media (max-width:720px) and (max-height:680px){   /* iPhone SE 級の低い画面だけ、もう一段詰める */
+    body.in-session{padding-block:4px}
+    body.in-session .head{padding-bottom:3px;margin-bottom:4px}
+    body.in-session input[type=range]{height:36px}
+    body.in-session .ticks{display:none}
+    body.in-session .m__bar{height:9px;margin-top:3px}
+    body.in-session .controls{gap:4px;margin-top:6px}
+    body.in-session .bay .btn{min-height:36px}
+    body.in-session .client-row{margin-bottom:3px;padding-bottom:3px}
   }
   @media (max-width:380px){
     body{padding-inline:10px}
@@ -1721,8 +1732,11 @@
   function fitScope(){
     if(!document.body.classList.contains("in-session")){scopeBox.style.height="";return;}
     var vh=window.visualViewport?window.visualViewport.height:window.innerHeight;
-    var rest=document.documentElement.scrollHeight-scopeBox.offsetHeight;
-    var w=scopeBox.clientWidth, h=Math.round(Math.min(Math.max(vh-rest,130),w/(w<720?1:1.5)));
+    var bs=getComputedStyle(document.body), unit=document.querySelector(".unit");
+    var rest=unit.offsetHeight-scopeBox.offsetHeight+parseFloat(bs.paddingTop)+parseFloat(bs.paddingBottom);
+    // Controls and meters come first; the scope gets what is left, up to a cap (it is the least decision-critical part).
+    var phone=scopeBox.clientWidth<720, cap=Math.min(phone?200:260, vh*(phone?0.28:0.32));
+    var h=Math.round(Math.min(Math.max(vh-rest,140),Math.max(cap,140)));
     // Always pin an explicit height: with aspect-ratio off, an auto height would follow the canvas and grow.
     if(scopeBox.style.height!==h+"px")scopeBox.style.height=h+"px";
   }
