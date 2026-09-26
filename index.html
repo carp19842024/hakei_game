@@ -271,6 +271,12 @@
   .mission-band{position:absolute;top:0;bottom:0;background:rgba(242,166,59,.7);border:2px solid #ffe1a0;pointer-events:none}
   .performance{position:relative;z-index:1;margin-top:10px;padding:12px 14px;background:#111b16;color:#e4e8dc;border:1px solid #435347;border-radius:4px;font-size:12px}
   .mission-head,.precision-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .client-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid #2c3a30}
+  .client-row b{font-size:12px;color:#cdd5cb;white-space:nowrap;font-weight:500}
+  #clientFace{font-size:18px;line-height:1}
+  .client-mood{flex:1;height:8px;background:#29382d;border-radius:2px;overflow:hidden;min-width:40px}
+  .client-mood i{display:block;height:100%;width:60%;background:var(--amber);transition:width .4s,background-color .4s}
+  #clientMood{font-family:var(--mono);font-size:11px;color:#b8c6b8;white-space:nowrap}
   .mission-head b{font-size:14px;white-space:nowrap}
   #missionTimer{font-family:var(--mono);font-size:11px;white-space:nowrap;color:#b8c6b8}
   #missionDetail{margin:5px 0 7px;min-height:2.8em;line-height:1.4;white-space:pre-line;color:#c0cec1}
@@ -400,7 +406,7 @@
     .hud .warn{color:#ffa28d}
     .xy{top:28px;right:8px;width:46%;aspect-ratio:1.45}
     .bubble{
-      left:10px;right:10px;bottom:10px;width:auto;max-width:none;
+      left:8px;right:auto;bottom:8px;width:auto;max-width:calc(54% - 16px);   /* 右上のレーダーを隠さない */
       padding:8px 10px;font-size:12px;line-height:1.6;
       word-break:normal;line-break:strict;text-wrap:pretty;overflow-wrap:break-word;
     }
@@ -489,7 +495,8 @@
             <li>右上の<b>レーダー</b>は 横＝音圧(LUFS)、縦＝山(クレスト)。光る点を<b>緑の枠</b>に入れよう。</li>
             <li><b>GAINを上げると点は右下へ</b>（大きく・平らに）。<b>RELEASEを伸ばすと上へ</b>（山が残る代わりに少し小さく）。</li>
             <li>枠の<b>中心に近いほど高得点</b>。枠内に居続けると<b>安定ボーナス</b>が加点されます。</li>
-            <li><b>5秒前の予告</b>のあと、<b>オレンジの枠</b>が出現。「音圧を上げる」は右へ、「山を残す」は上へ。10秒中<b>合計5秒</b>で+200点。</li>
+            <li><b>クライアントの依頼</b>が5秒前に届き、<b>オレンジの枠</b>が出現。「音圧を上げて」は右へ、「山を残して」は上へ、「ブレイクは静かに」は左へ、「ポンピングを抑えて」はRELEASEを長く。10秒中<b>合計5秒</b>で+200点。</li>
+            <li>クライアントの<b>機嫌</b>は課題の成否や音の状態で上下し、最後に<b>満足度ボーナス</b>に。40未満だと<b>リテイク</b>。たまに来る<b>無茶振り</b>は失敗しても機嫌はあまり下がりません。</li>
             <li>枠より下の<b>海苔ゾーン</b>に沈むと海苔メーターが上昇。65でボーナス停止、100で終了。上へ戻ると回復します。</li>
           </ol>
         </div>
@@ -539,6 +546,7 @@
     <div class="shape-feedback"><b id="shapeStatus">開始後に波形を判定</b><span id="shapeHint">GAINで右（音圧）、RELEASEで上（山）へ</span></div>
     <p class="guide" id="rangeGuide" aria-live="polite">目標の帯に音圧を合わせましょう</p>
     <section class="performance" id="performance" aria-label="課題と安定ボーナス" hidden>
+      <div class="client-row"><span id="clientFace" aria-hidden="true">🙂</span><b id="clientWho">Client</b><div class="client-mood" aria-hidden="true"><i id="clientBar"></i></div><span id="clientMood">機嫌 60</span></div>
       <div class="mission-head"><b id="missionTitle" aria-live="polite">通常区間</b><span id="missionTimer"></span></div>
       <p id="missionDetail"></p>
       <div class="challenge-progress" id="missionTrack" aria-hidden="true" hidden><i id="missionProgress"></i></div>
@@ -609,7 +617,7 @@
   var chartCache = {}, chartPending = {};
   var CHALLENGE = { preview:5, length:10, required:5, interval:20, charge:0.8, grace:0.7, precisionRate:24 };
   // 2D zone: floor = reachable crest at the band centre minus slack; nori line sits below it.
-  var ZONE = { half:1.25, slack:1.0, pushSlack:1.3, punchSlack:0.3, noriMax:8.5, noriGap:0.6 };
+  var ZONE = { half:1.25, slack:1.0, punchSlack:0.3, noriMax:8.5, noriGap:0.6 };
 
   function analysePhrases(buf, duration){
     var channels=[], bins=[], step=0.25;
@@ -627,36 +635,71 @@
     return {step:step,bins:bins};
   }
 
-  function makeChart(buf,duration){
+  // Challenge catalogue. goal: demand offset from the running base target. center/half: orange box
+  // relative to goal. floor: offset from the green floor, or 'punch' for the calibrated high floor.
+  var MISSIONS = {
+    push:   {name:'サビで音圧を上げて', goal:1.8,  center:1.1,  half:0.9,  floor:-0.3,   reward:200},
+    punch:  {name:'山を残して',         goal:0.5,  center:0.75, half:1.25, floor:'punch', reward:200},
+    quiet:  {name:'ブレイクは静かに',   goal:-3.0, center:0.25, half:0.75, floor:0,      reward:200},
+    release:{name:'ポンピングを抑えて', goal:0.5,  center:0.75, half:1.25, floor:0,      reward:200, rel:250},
+    muri:   {name:'無茶振り：もっと音圧を！', goal:3.2, center:0.6, half:0.9, floor:-0.8, reward:300, noriCap:30}
+  };
+  var MOOD = { start:60, bonus:5, ok:70, retake:40 };   // client mood 0..100; bonus = mood × 5 points
+
+  function baseTarget(t,duration){ return -13+2.5*t/duration; }
+  function addMission(missions,demands,start,type,duration){
+    var d=MISSIONS[type], base=baseTarget(start,duration), goal=Math.round((base+d.goal)*10)/10;
+    missions.push({start:start,end:start+CHALLENGE.length,type:type,target:goal,
+      center:goal+d.center,half:d.half,name:d.name});
+    demands.push({t:start,target:goal});
+    demands.push({t:start+CHALLENGE.length,target:Math.round(base*10)/10});
+  }
+  // authored: optional hand-made list [{t:秒, type:'push'|'punch'|'quiet'|'release'|'muri'}, ...]
+  function makeChart(buf,duration,authored){
     var analysis=analysePhrases(buf,duration), bins=analysis.bins, step=analysis.step;
     var missions=[], demands=[{t:0,target:-13}], previousType=null, repeat=0;
-    for(var center=12;center+CHALLENGE.length<=duration-10;center+=CHALLENGE.interval){
-      var best=null;
-      for(var j=Math.ceil((center-2)/step);j<=Math.floor((center+2)/step);j++){
-        var start=j*step;
-        if(start+CHALLENGE.length>duration-10 || (missions.length && start<missions[missions.length-1].end+CHALLENGE.preview+2)) continue;
-        var section=bins.slice(j,j+Math.round(CHALLENGE.length/step));
-        // A fade-out or near-silence should not become an impossible challenge.
-        if(section.length<CHALLENGE.length/step || section.filter(function(b){return b.level>-42;}).length<section.length*0.8) continue;
-        var before=(bins[j-2].level+bins[j-1].level)/2, after=(bins[j].level+bins[j+1].level)/2;
-        var delta=after-before, strength=Math.abs(delta)-Math.abs(start-center)*0.15;
-        if(!best || strength>best.strength) best={start:start,delta:delta,strength:strength,section:section};
+    if(authored && authored.length){
+      authored.slice().sort(function(a,b){return a.t-b.t;}).forEach(function(a){
+        var last=missions[missions.length-1];
+        if(!MISSIONS[a.type] || a.t<CHALLENGE.preview || a.t+CHALLENGE.length>duration-2 || (last && a.t<last.end+CHALLENGE.preview)) return;
+        addMission(missions,demands,a.t,a.type,duration);
+      });
+    }else{
+      var levels=bins.map(function(b){return b.level;}).filter(function(v){return v>-42;}).sort(function(a,b){return a-b;});
+      var median=levels.length?levels[Math.floor(levels.length/2)]:-20;
+      var picks=[];
+      for(var center=12;center+CHALLENGE.length<=duration-10;center+=CHALLENGE.interval){
+        var best=null;
+        for(var j=Math.ceil((center-2)/step);j<=Math.floor((center+2)/step);j++){
+          var start=j*step;
+          if(start+CHALLENGE.length>duration-10 || (picks.length && start<picks[picks.length-1].start+CHALLENGE.length+CHALLENGE.preview+2)) continue;
+          var section=bins.slice(j,j+Math.round(CHALLENGE.length/step));
+          // A fade-out or near-silence should not become an impossible challenge.
+          if(section.length<CHALLENGE.length/step || section.filter(function(b){return b.level>-42;}).length<section.length*0.8) continue;
+          var before=(bins[j-2].level+bins[j-1].level)/2, after=(bins[j].level+bins[j+1].level)/2;
+          var delta=after-before, strength=Math.abs(delta)-Math.abs(start-center)*0.15;
+          if(!best || strength>best.strength) best={start:start,delta:delta,strength:strength,section:section};
+        }
+        if(!best) continue;
+        var mean=10*Math.log10(best.section.reduce(function(s,b){return s+Math.pow(10,b.level/10);},0)/best.section.length);
+        var type=mean<median-3 ? 'quiet'
+          : Math.abs(best.delta)>1.2 ? (best.delta>0?'push':'punch') : (previousType==='push'?'punch':'push');
+        // Avoid a long run of the same objective even in uniformly loud tracks.
+        if(type===previousType && repeat>=2) type=type==='push'?'punch':'push';
+        repeat=type===previousType?repeat+1:1;previousType=type;
+        picks.push({start:best.start,type:type});
       }
-      if(!best) continue;
-      var type=Math.abs(best.delta)>1.2 ? (best.delta>0?'push':'punch') : (previousType==='push'?'punch':'push');
-      // Avoid a long run of the same objective even in uniformly loud tracks.
-      if(type===previousType && repeat>=2) type=type==='push'?'punch':'push';
-      repeat=type===previousType?repeat+1:1;previousType=type;
-      var base=-13+2.5*best.start/duration;
-      var goal=Math.round((base+(type==='punch'?0.5:1.8))*10)/10;
-      missions.push({start:best.start,end:best.start+CHALLENGE.length,type:type,target:goal,
-        center:goal+(type==='push'?1.1:0.75),half:type==='punch'?ZONE.half:0.9,
-        name:type==='push'?'音圧を上げてキープ':'山を残してキープ'});
-      demands.push({t:best.start,target:goal});
-      demands.push({t:best.start+CHALLENGE.length,target:Math.round(base*10)/10});
+      // Variety: every second "leave peaks" becomes a release challenge; the last late push is the client's unreasonable ask.
+      var punches=0;
+      picks.forEach(function(pk){if(pk.type==='punch'&&(punches++%2===1))pk.type='release';});
+      if(picks.length>=3){
+        for(var q=picks.length-1;q>=0;q--)if(picks[q].type==='push'&&picks[q].start>duration*0.5){picks[q].type='muri';break;}
+      }
+      picks.forEach(function(pk){addMission(missions,demands,pk.start,pk.type,duration);});
     }
+    var missionMax=missions.reduce(function(s,m){return s+MISSIONS[m.type].reward*1.5;},0);
     return {duration:duration,bins:bins,missions:missions,demands:demands,zone:null,
-      maxScore:duration*(32+CHALLENGE.precisionRate)+missions.length*300};
+      maxScore:duration*(32+CHALLENGE.precisionRate)+missionMax+100*MOOD.bonus};
   }
 
   /* ----- zone calibration: run the real limiter chain offline and measure where (LUFS, crest) can go ----- */
@@ -738,7 +781,7 @@
   function chartFor(key,buf){
     if(chartCache[key])return Promise.resolve(chartCache[key]);
     if(!chartPending[key])chartPending[key]=Promise.resolve().then(function(){
-      return calibrateZone(makeChart(buf,sessionFor(buf.duration)),buf);
+      return calibrateZone(makeChart(buf,sessionFor(buf.duration),TRACKS[key]&&TRACKS[key].chart),buf);
     }).then(function(chart){chartCache[key]=chart;return chart;})
       .catch(function(e){delete chartPending[key];throw e;});
     return chartPending[key];
@@ -762,8 +805,10 @@
     var m=chart.missions[index];
     if(m && time>=m.start && time<m.end){
       r.mission=m;
-      if(m.type==='push'){r.mLo=m.center-m.half;r.mHi=m.center+m.half;r.mFloor=r.floor-(ZONE.pushSlack-ZONE.slack);}
-      else{r.mLo=r.lo;r.mHi=r.hi;r.mFloor=seriesAt(z.punch,time);}
+      var d=MISSIONS[m.type];
+      r.mLo=m.center-m.half;r.mHi=m.center+m.half;
+      r.mFloor=d.floor==='punch'?seriesAt(z.punch,time):r.floor+d.floor;
+      r.needRel=d.rel||0;r.noriCap=d.noriCap||0;
     }
     return r;
   }
@@ -772,18 +817,20 @@
   function PerformanceRun(chart){
     this.chart=chart;this.time=0;this.base=0;this.precision=0;this.missionScore=0;
     this.index=0;this.hits=0;this.hold=0;this.miss=0;this.precisionTime=0;
-    this.results=[];this.lastResult=null;this.rate=0;
+    this.results=[];this.lastResult=null;this.rate=0;this.mood=MOOD.start;
   }
   PerformanceRun.prototype.completeMission=function(){
     var m=this.chart.missions[this.index];
     var success=this.hits+1e-8>=CHALLENGE.required;
     var extra=(this.hits-CHALLENGE.required)/(CHALLENGE.length-CHALLENGE.required);
-    var reward=success ? Math.round(200+100*clamp(extra,0,1)) : 0;
+    var d=MISSIONS[m.type], reward=success ? Math.round(d.reward*(1+0.5*clamp(extra,0,1))) : 0;
     this.missionScore+=reward;
-    this.lastResult={name:m.name,success:success,reward:reward,hits:this.hits,until:m.end+2};
+    // An unreasonable ask costs little when missed and pleases a lot when met.
+    this.mood=clamp(this.mood+(success?(m.type==='muri'?20:10):(m.type==='muri'?-5:-12)),0,100);
+    this.lastResult={name:m.name,type:m.type,success:success,reward:reward,hits:this.hits,until:m.end+2};
     this.results.push(this.lastResult);this.index++;this.hits=0;
   };
-  PerformanceRun.prototype.tick=function(dt,lufs,crest,nori){
+  PerformanceRun.prototype.tick=function(dt,lufs,crest,nori,rel){
     var end=Math.min(this.time+dt,this.chart.duration);
     while(this.time<end-1e-10){
       var m=this.chart.missions[this.index];
@@ -805,8 +852,14 @@
       var yF=!hasC?0:(crest>=floor?1:clamp(1-(floor-crest)/2.5,0,1));
       this.base+=length*32*xF*yF*(1-clamp(nori,0,100)/220);
       var precise=hasL && hasC && lufs>=z.lo && lufs<=z.hi && crest>=floor && nori<65;
-      var onTask=z.mission && precise && lufs>=z.mLo-1e-8 && lufs<=z.mHi+1e-8 && !(crest<z.mFloor);
+      var onTask=z.mission && precise && lufs>=z.mLo-1e-8 && lufs<=z.mHi+1e-8 && !(crest<z.mFloor)
+        && !(z.needRel && !(rel>=z.needRel)) && !(z.noriCap && nori>=z.noriCap);
       if(onTask)this.hits+=length;
+      // Client mood drifts with what they hear: steady work pleases, nori and wrong levels annoy.
+      var dm=precise?0.4:0;
+      if(nori>=65)dm-=2;
+      if(hasL&&lufs>z.hi+1)dm-=0.6;else if(hasL&&lufs<z.lo-1)dm-=0.4;
+      this.mood=clamp(this.mood+dm*length,0,100);
       if(precise){
         var old=this.hold;this.hold+=length;this.miss=0;this.precisionTime+=length;
         function integral(h){return h<CHALLENGE.charge?h*h/(2*CHALLENGE.charge):h-CHALLENGE.charge/2;}
@@ -822,15 +875,22 @@
     if(current && this.time>=current.end-1e-8) this.completeMission();
   };
   PerformanceRun.prototype.total=function(){return this.base+this.precision+this.missionScore;};
+  PerformanceRun.prototype.moodBonus=function(){return Math.round(this.mood)*MOOD.bonus;};
   PerformanceRun.prototype.successes=function(){return this.results.filter(function(r){return r.success;}).length;};
 
   var run=null, gameChart=null, curZone=null;
   function putText(id,text){var el=$(id);if(el.textContent!==text)el.textContent=text;}
   function rangeText(center,half){return (center-half).toFixed(1)+' ～ '+(center+half).toFixed(1)+' LUFS';}
   function missionText(z){
-    return z.mission.type==='push'?'右へ：'+z.mLo.toFixed(1)+' ～ '+z.mHi.toFixed(1)+' LUFS'
-      :'上へ：山 '+(Number.isFinite(z.mFloor)?z.mFloor.toFixed(1):'—')+' dB 以上';
+    var t=z.mission.type, band=z.mLo.toFixed(1)+' ～ '+z.mHi.toFixed(1)+' LUFS';
+    if(t==='push')return '右へ：'+band;
+    if(t==='muri')return 'もっと右へ：'+band+'（海苔'+z.noriCap+'未満）';
+    if(t==='quiet')return '左へ：'+band;
+    if(t==='release')return 'RELEASE '+z.needRel+'ms以上で枠キープ';
+    return '上へ：山 '+(Number.isFinite(z.mFloor)?z.mFloor.toFixed(1):'—')+' dB 以上';
   }
+  var PREP = { push:'GAINを上げる準備を', punch:'RELEASEを伸ばすか、音圧を枠の左寄りへ', quiet:'静かな所で音圧を追いかけない',
+    release:'RELEASEを250ms以上へ', muri:'GAINを大きく上げ、RELEASEで山を守る' };
   function renderPerformance(lufs,crest){
     if(!run)return;
     var z=zoneAt(gameChart,run.time,run.index), m=gameChart.missions[run.index];
@@ -843,7 +903,7 @@
     }else if(m && m.start-run.time<=CHALLENGE.preview){
       var next=zoneAt(gameChart,m.start+1e-3,run.index);
       state='preview';title='次は '+m.name;timer=Math.max(0,m.start-run.time).toFixed(1)+'秒後';
-      detail='次の枠 '+missionText(next)+'\n'+(m.type==='punch'?'RELEASEを伸ばすか、音圧を枠の左寄りへ':'GAINを上げる準備を');
+      detail='次の枠 '+missionText(next)+'\n'+PREP[m.type];
     }else if(run.lastResult && run.time<run.lastResult.until){
       var result=run.lastResult;state=result.success?'success':'normal';
       title=result.success?'課題クリア！ +'+result.reward+'点':'課題終了';
@@ -857,7 +917,7 @@
     $('missionTrack').hidden=state!=='active';
     $('stabilityTrack').hidden=state==='preview';
     // The LUFS meter shows the x-projection only; a "leave peaks" challenge lives on the y-axis.
-    var pushNow=z.mission&&z.mission.type==='push';
+    var pushNow=z.mission&&z.mHi-z.mLo<z.hi-z.lo-0.01;   // challenges that narrow the loudness range
     $('missionBand').hidden=!pushNow;
     if(pushNow){
       $('missionBand').style.left=clamp((z.mLo+30)/30,0,1)*100+'%';
@@ -866,9 +926,13 @@
     var floor=z.mission?Math.max(z.floor,z.mFloor):z.floor;
     var hint='点を緑の枠へ';
     if(nori>=65)hint='海苔を65未満へ：上へ戻そう';
+    else if(z.mission&&z.noriCap&&nori>=z.noriCap)hint='海苔を'+z.noriCap+'未満へ';
+    else if(z.mission&&z.needRel&&parseFloat(relEl.value)<z.needRel)hint='RELEASEを'+z.needRel+'ms以上へ';
     else if(Number.isFinite(lufs)){
       if(lufs<z.lo)hint='音圧不足：GAIN↑で右へ';
       else if(lufs>z.hi)hint='音圧過多：GAIN↓で左へ';
+      else if(z.mission&&lufs>z.mHi)hint='オレンジ枠へ：GAIN↓で左へ';
+      else if(z.mission&&lufs<z.mLo)hint='オレンジ枠へ：GAIN↑で右へ';
       else if(Number.isFinite(floor)&&Number.isFinite(crest)&&crest<floor)hint='山不足：RELEASE↑かGAIN↓で上へ';
       else hint=run.rate>=23.99?'いい調子！':'ボーナス充電中';
     }
@@ -964,6 +1028,67 @@
     track03: { url: "track03.mp3", name: "ノリハケイシグナル",   genre: "J-POP",        glob: "NORI_TRACK3" },
     track04: { url: "track04.mp3", name: "NORI WAVE",          genre: "FULLON",       glob: "NORI_TRACK4" }
   };
+  // 課題を手作りしたい場合は各曲に chart:[{t:秒, type:'push'|'punch'|'quiet'|'release'|'muri'}, ...] を追加する。
+  // 未指定なら曲のエネルギー変化から自動生成。
+  var CLIENTS = {
+    track01: { who:"同人サークル主宰", hello:"爆音で頼みます！でも潰しすぎはNGで", muri:"やっぱ即売会はもっと爆音じゃないと！" },
+    track02: { who:"アイドル事務所P",  hello:"ファンのイヤホンで映えるようにお願いします♪", muri:"他のグループに負けたくないの、もっと大きく！" },
+    track03: { who:"レーベルA&R",      hello:"配信メインなので、上品にお願いします", muri:"すみません、上から『もっと音圧』って…" },
+    track04: { who:"パーティーオーガナイザー", hello:"フロアを揺らしたい。キックは生かしてね", muri:"ピークタイム用にもう一段アゲて！" },
+    demo:    { who:"Client", hello:"よろしくお願いします！", muri:"もっと音圧いけます？" }
+  };
+  var LINES = {
+    preview:{ push:"次のサビ、ドーンと上げてほしいです！", punch:"次はキックの山を残したいな", quiet:"次のブレイクは静かに聴かせたいです",
+      release:"ここ、ポンピングが気になるのでリリース長めで" },
+    success:["いいね！その感じ！","完璧です！","おお、分かってますね〜","そうそう、それです！"],
+    muriSuccess:"すごい、あの音圧で潰れてない…！",
+    fail:["うーん、ちょっと違うかな…","もう少し粘ってほしかったです","次はお願いしますよ？"],
+    muriFail:"まあ…無茶言いましたね。",
+    nori40:"なんか音が平べったくない？", nori65:"これ、海苔になってません!?",
+    over:"ちょっと歪んでる気がする…", under:"もうちょい迫力ほしいです",
+    happy:"今の感じ、最高です", moodLow:"このままだとリテイクかな…", last:"ラストまで頼みます！"
+  };
+  // Decides when the client speaks. Reads game state only; never touches the score.
+  function ClientDirector(persona){
+    this.p=persona;this.lastAt=-99;this.previewed=-1;this.results=0;this.flags={};this.overT=0;this.underT=0;this.pick=0;
+  }
+  ClientDirector.prototype.say=function(t,text,priority){
+    if(!priority&&t-this.lastAt<8)return;
+    this.lastAt=t;showBubble(text,this.p.who);
+  };
+  ClientDirector.prototype.update=function(run,z,lufs,dt){
+    var t=run.time,f=this.flags,m=run.chart.missions[run.index];
+    if(!f.hello&&t>1){f.hello=true;this.say(t,this.p.hello,true);return;}
+    if(run.results.length>this.results){
+      this.results=run.results.length;var r=run.lastResult,muri=r.type==='muri';
+      this.say(t,r.success?(muri?LINES.muriSuccess:LINES.success[this.pick++%LINES.success.length]):(muri?LINES.muriFail:LINES.fail[this.pick++%LINES.fail.length]),true);
+      return;
+    }
+    if(m&&this.previewed<run.index&&m.start-t<=CHALLENGE.preview){
+      this.previewed=run.index;this.say(t,m.type==='muri'?this.p.muri:LINES.preview[m.type],true);return;
+    }
+    if(nori>=65&&!f.n65){f.n65=f.n40=true;this.say(t,LINES.nori65,true);return;}
+    if(nori>=40&&!f.n40){f.n40=true;this.say(t,LINES.nori40);return;}
+    if(nori<20)f.n40=f.n65=false;
+    this.overT=Number.isFinite(lufs)&&lufs>z.hi+0.5?this.overT+dt:0;
+    this.underT=Number.isFinite(lufs)&&lufs<z.lo&&t>6?this.underT+dt:0;
+    if(this.overT>4){this.overT=0;this.say(t,LINES.over);return;}
+    if(this.underT>6){this.underT=0;this.say(t,LINES.under);return;}
+    if(run.mood<35&&!f.low){f.low=true;this.say(t,LINES.moodLow);return;}
+    if(run.mood>50)f.low=false;
+    if(run.hold>12&&t-(f.happyAt||-99)>30){f.happyAt=t;this.say(t,LINES.happy);return;}
+    if(!f.last&&run.chart.duration-t<10){f.last=true;this.say(t,LINES.last);}
+  };
+  var director=null;
+  function moodFace(v){return v>=75?"😄":v>=MOOD.ok?"🙂":v>=MOOD.retake?"😐":"😠";}
+  function renderMood(){
+    if(!run)return;
+    var v=Math.round(run.mood);
+    putText('clientFace',moodFace(v));putText('clientMood','機嫌 '+v);
+    var bar=$('clientBar');bar.style.width=v+'%';
+    bar.style.backgroundColor=v>=MOOD.ok?'#92da89':v>=MOOD.retake?'#f2a63b':'#cc3b2a';
+  }
+
   function trackLabel(key){ var d = TRACKS[key]; return d.name + " (" + d.genre + ")"; }
   function currentPar(){ return gameChart ? gameChart.maxScore : 1; }
 
@@ -1438,8 +1563,10 @@
     return m + ":" + (r < 10 ? "0" : "") + r;
   }
 
-  function showBubble(text){
-    bubble.innerHTML = '<span>Client</span>' + text;
+  function showBubble(text, who){
+    bubble.innerHTML = '<span></span>';
+    bubble.firstChild.textContent = who || (director ? director.p.who : "Client");
+    bubble.appendChild(document.createTextNode(text));
     bubble.hidden = false;
     bubbleTimer = 5.5;
   }
@@ -1449,6 +1576,8 @@
     inRangeTime = underTime = overTime = 0; gridPhase = 0;
     gameChart = chartCache[isDemo ? "demo" : activeKey];   // start() calibrates it before play
     run = new PerformanceRun(gameChart);
+    director = new ClientDirector(CLIENTS[isDemo ? "demo" : activeKey] || CLIENTS.demo);
+    putText("clientWho", director.p.who); renderMood();
     DEMANDS = gameChart.demands;
     demandIdx = 0; target = DEMANDS[0].target;
     lufsRing = []; lufsSum = 0; lufsDuration = 0; crest1s = NaN; crestRing = []; crestDur = 0; peakHold = 0; peakHoldT = 0;
@@ -1594,12 +1723,14 @@
       crestAcc += crest1s * dt; crestT += dt;
     }
 
-    run.tick(dt,lufs,crest1s,nori);
+    run.tick(dt,lufs,crest1s,nori,parseFloat(relEl.value));
     score=run.total();
     curZone=zoneAt(gameChart,run.time,run.index);
     trailT+=dt;
     if(trailT>=0.1&&isFinite(lufs)&&isFinite(crest1s)){trailT=0;xyTrail.push({L:lufs,c:crest1s});if(xyTrail.length>24)xyTrail.shift();}
     xyDirty=true;
+    director.update(run,curZone,lufs,dt);
+    renderMood();
     renderPerformance(lufs,crest1s);
     if(lufs<lo)underTime+=dt;else if(lufs>hi)overTime+=dt;else inRangeTime+=dt;
     scopeDirty=true;
@@ -1645,6 +1776,10 @@
 
     var integrated = sumN > 0 ? -0.691 + 10 * Math.log10(Math.max(sumSq / sumN, 1e-10)) : -70;
     var avgCrest = crestT > 0 ? crestAcc / crestT : (isFinite(crest1s) ? crest1s : 0);
+    // The client's mood becomes a satisfaction bonus when the track is delivered (not on a nori game over).
+    var mood = Math.round(run.mood), moodBonus = failed ? 0 : run.moodBonus();
+    score += moodBonus;
+    vScore.textContent = Math.round(score).toLocaleString("en-US");
     var par = currentPar();
     var pct = par > 0 ? score / par : 0;
 
@@ -1655,6 +1790,8 @@
       statCell("安定点", Math.round(run.precision).toLocaleString("en-US")) +
       statCell("課題点", Math.round(run.missionScore).toLocaleString("en-US")) +
       statCell("課題クリア", run.successes()+" / "+gameChart.missions.length) +
+      statCell("クライアント満足度", moodFace(mood) + " " + mood, mood >= MOOD.ok ? "good" : (mood < MOOD.retake ? "bad" : "")) +
+      statCell("満足度ボーナス", moodBonus.toLocaleString("en-US")) +
       statCell("枠内キープ", Math.round(run.precisionTime/Math.max(elapsed,0.001)*100)+" %") +
       statCell("平均音圧（近似）", integrated.toFixed(1) + " LUFS") +
       statCell("加点中クレスト", avgCrest.toFixed(1) + " dB") +
@@ -1672,14 +1809,17 @@
 
     // The score ceiling includes optional precision and missions; passive base play cannot earn the top rank.
     var rank, note;
-    if (pct >= 0.82 && run.successes() >= Math.ceil(gameChart.missions.length*0.7)){ rank = "マスタリング職人"; note = "音圧と山を両立し、安定した調整で見せ場も決めました。文句なしの納品です。"; }
+    if (pct >= 0.82 && mood >= MOOD.ok && run.successes() >= Math.ceil(gameChart.missions.length*0.7)){ rank = "マスタリング職人"; note = "音圧と山を両立し、安定した調整で見せ場も決めました。文句なしの納品です。"; }
     else if (pct >= 0.62){ rank = "マスタリングエンジニア"; note = "しっかり音圧に乗せられています。適正帯のキープと課題の達成時間を伸ばせば職人です。"; }
     else if (pct >= 0.38){ rank = "アシスタント"; note = "通常点は稼げています。次は予告付きの課題と波形の山を残す調整に挑戦しましょう。"; }
     else { rank = "見習い"; note = "目標レンジに乗れていない時間が長すぎました。不足は加点停止、上げ過ぎは加点が減ります。まずは的に当て続けることから。"; }
 
-    var normTxt = note + " 加点中の平均クレストは " + avgCrest.toFixed(1) + " dB。攻略率は通常点・安定点・課題点の合計を上限と比較した値です。同じ曲は同じ課題で再挑戦できます。";
+    var normTxt = note + " 加点中の平均クレストは " + avgCrest.toFixed(1) + " dB。攻略率は通常点・安定点・課題点・満足度ボーナスの合計を上限と比較した値です。同じ曲は同じ課題で再挑戦できます。";
 
-    $("resTitle").textContent = "納品完了";
+    var who = director.p.who;
+    if (mood >= MOOD.ok){ $("resTitle").textContent = "一発OK！ 納品完了"; normTxt = who + "「ありがとうございます、このまま使います！」 " + normTxt; }
+    else if (mood >= MOOD.retake){ $("resTitle").textContent = "納品完了（軽い修正あり）"; normTxt = who + "「だいたいOKです。細かいところは後で相談させてください」 " + normTxt; }
+    else { $("resTitle").textContent = "リテイク…"; normTxt = who + "「すみません、もう一度お願いできますか…」 満足度が" + MOOD.retake + "未満のためリテイクです。 " + normTxt; }
     $("resRank").textContent = rank;
     $("resStats").innerHTML = cells;
     $("resNorm").textContent = normTxt;
