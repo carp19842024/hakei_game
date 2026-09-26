@@ -213,10 +213,6 @@
   .trk__name{font-size:13px;font-weight:500;color:#cdd5cb;white-space:nowrap}
   .trk__meta{display:flex;align-items:center;justify-content:space-between;gap:12px}
   .trk__gen{font-family:var(--cond);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#7d8c80}
-  .trk__diff{font-family:var(--cond);font-size:11px;font-weight:600;letter-spacing:.08em;white-space:nowrap}
-  .trk__diff--easy{color:var(--teal)}
-  .trk__diff--normal{color:var(--amber)}
-  .trk__diff--hard{color:var(--red)}
   .trk:hover{border-color:rgba(150,170,155,.55)}
   .trk:has(input:checked){border-color:var(--amber);background:rgba(242,166,59,.12)}
   .trk:has(input:checked) .trk__name{color:#ffe0ad}
@@ -578,22 +574,22 @@
             <label class="trk">
               <input type="radio" name="trk" value="track02" checked>
               <span class="trk__name">ごめんね、のりです。</span>
-              <span class="trk__meta"><span class="trk__gen">IDOL CITY POP</span><span class="trk__diff trk__diff--easy">易 ★☆☆</span></span>
+              <span class="trk__meta"><span class="trk__gen">IDOL CITY POP</span></span>
             </label>
             <label class="trk">
               <input type="radio" name="trk" value="track03">
               <span class="trk__name">ノリハケイシグナル</span>
-              <span class="trk__meta"><span class="trk__gen">J-POP</span><span class="trk__diff trk__diff--normal">中 ★★☆</span></span>
+              <span class="trk__meta"><span class="trk__gen">J-POP</span></span>
             </label>
             <label class="trk">
               <input type="radio" name="trk" value="track01">
               <span class="trk__name">ノーマライズ</span>
-              <span class="trk__meta"><span class="trk__gen">J-HARDCORE</span><span class="trk__diff trk__diff--hard">難 ★★★</span></span>
+              <span class="trk__meta"><span class="trk__gen">J-HARDCORE</span></span>
             </label>
             <label class="trk">
               <input type="radio" name="trk" value="track04">
               <span class="trk__name">NORI WAVE</span>
-              <span class="trk__meta"><span class="trk__gen">FULLON</span><span class="trk__diff trk__diff--hard">難 ★★★</span></span>
+              <span class="trk__meta"><span class="trk__gen">FULLON</span></span>
             </label>
           </div>
         </div>
@@ -1272,7 +1268,7 @@
   function trackLabel(key){ var d = TRACKS[key]; return d.name + " (" + d.genre + ")"; }
   function currentPar(){ return gameChart ? gameChart.maxScore : 1; }
 
-  var selectedKey = "track02";        // 初回は易しい曲を選択
+  var selectedKey = "track02";        // 初回に選択しておく曲
   var bufCache = {}, pendCache = {};  // 課題曲のデコード済みバッファ / 読込中Promise
 
   var ctx = null, srcNode = null, inGain = null, lim = null, shaper = null, outGain = null;
