@@ -616,7 +616,7 @@
             <li>枠の<b>中心に近いほど高得点</b>。枠内に居続けると<b>安定ボーナス</b>が加点されます。</li>
             <li><b>クライアントの依頼</b>が5秒前に届き、<b>オレンジの枠</b>が出現。「音圧を上げて」は右へ、「山を残して」は上へ、「静かなパートは静かに」は左へ、「ポンピングを抑えて」はRELEASEを長く。10秒中<b>合計5秒</b>で+200点。</li>
             <li>クライアントの<b>機嫌</b>は課題の成否や音の状態で上下し、最後に<b>満足度ボーナス</b>に。40未満だと<b>リテイク</b>。たまに来る<b>無茶振り</b>は失敗しても機嫌はあまり下がりません。</li>
-            <li>枠より下の<b>海苔ゾーン</b>に沈むと海苔メーターが上昇。65でボーナス停止、100で終了。上へ戻ると回復します。</li>
+            <li><b>海苔メーター</b>は常に増減します。枠の下のほう（音圧を攻めた側）ではじわじわ増え、上に余裕を作ると回復。枠より下の<b>海苔ゾーン</b>に沈むと急増。65でボーナス停止、100で終了。</li>
           </ol>
         </div>
       </section>
@@ -737,7 +737,7 @@
   var chartCache = {}, chartPending = {};
   var CHALLENGE = { preview:5, length:10, required:5, interval:20, charge:0.8, grace:0.7, precisionRate:24 };
   // 2D zone: floor = reachable crest at the band centre minus slack; nori line sits below it.
-  var ZONE = { half:1.25, slack:1.0, punchSlack:0.3, noriMax:8.5, noriGap:0.6 };
+  var ZONE = { half:1.25, slack:1.0, punchSlack:0.3, noriMax:8.5 };
 
   function analysePhrases(buf, duration){
     var channels=[], bins=[], step=0.25;
@@ -892,7 +892,10 @@
         floor=smoothSeries(floor,2);punch=smoothSeries(punch,2);
         for(var k=0;k<secs;k++){
           punch[k]=Math.max(punch[k],floor[k]+0.4);
-          nori.push(Number.isFinite(floor[k])?Math.min(ZONE.noriMax,floor[k]-ZONE.noriGap):NaN);
+          // Nori line from the best reachable crest, so every track has the same build/recover feel:
+          // at the box centre with a good release the gauge creeps up slowly; the left edge recovers.
+          var best=punch[k]+ZONE.punchSlack;
+          nori.push(Number.isFinite(floor[k])?Math.min(ZONE.noriMax,best-(NORI.neutral-0.2),floor[k]-0.3):NaN);
         }
         chart.zone={floor:floor,punch:punch,nori:nori};
         return chart;
@@ -1090,6 +1093,10 @@
       var ny=py(z.nori);
       g2.fillStyle=COL_NORI;g2.fillRect(pl,ny,pw,pt+ph-ny);
       g2.strokeStyle=COL_NORI_FLECK;g2.setLineDash([3,3]);g2.beginPath();g2.moveTo(pl,ny+.5);g2.lineTo(pl+pw,ny+.5);g2.stroke();g2.setLineDash([]);
+      // build band: between the line and line+neutral the gauge slowly fills
+      var by=py(z.nori+NORI.neutral);
+      var grad=g2.createLinearGradient(0,by,0,ny);grad.addColorStop(0,'rgba(63,122,85,0)');grad.addColorStop(1,'rgba(63,122,85,.45)');
+      g2.fillStyle=grad;g2.fillRect(pl,by,pw,ny-by);
       if(pt+ph-ny>10){g2.fillStyle='#6fae83';g2.font='600 9px '+getComputedStyle(document.body).fontFamily;g2.fillText('海苔',pl+3,pt+ph-3);}
     }
     // green box (open to the top: more peak at the same loudness is never wrong)
@@ -1344,23 +1351,34 @@
   LiveObserver.prototype.reset=function(){this.pos=0;this.compressionRun=0;this.run=0;this.clean=0;this.warning=false};
   LiveObserver.prototype.feed=function(before,after,callback){for(var i=0;i<before.length;i++){this.before[this.pos]=before[i];this.after[this.pos]=after[i];if(++this.pos===this.size){this.pos=0;var p=observeShape(this.before),q=observeShape(this.after),drop=p.crest-q.crest,compression=db(p.rms)>-50&&drop>=2&&q.crest<=7,pg=observeGap(this.before,p.rms),qg=observeGap(this.after,q.rms),hit=compression&&qg<=10&&pg-qg>=10;this.compressionRun=compression?this.compressionRun+.25:0;if(hit){this.run+=.25;this.clean=0;if(this.run>=.75)this.warning=true}else{this.run=0;this.clean+=.25;if(this.clean>=.5)this.warning=false}callback({before:p,after:q,drop:drop,beforeGap:pg,afterGap:qg,compressionRun:this.compressionRun,run:this.run,state:this.warning?(hit?'warning':'recovering'):(hit?'pending':'clear')},this.before,this.after)}}};
 
+  // 海苔は「管理するゲージ」。海苔ラインからの余裕(headroom = クレスト − ライン)で増減する。
+  //   ライン未満 … 沈んでいる。急増(3〜15/秒)
+  //   0〜neutral … 攻めている(枠の下のほう＝音圧側)。じわじわ増える(最大3/秒)
+  //   neutral以上 … 余裕あり。回復(1〜4/秒)
+  // 通常のデフォルト設定で枠の中心にいると、ほぼ増減なし(neutral付近)になるよう校正済み。
+  var NORI = { neutral:2.4, build:4, sinkMin:3, sinkMax:15, sinkSpan:3, decayMin:1, decayMax:4, decaySlope:2, relWarn:2 };
+  var noriRate = 0;
+  function noriRateFor(headroom){
+    if(headroom<=0) return NORI.sinkMin+(NORI.sinkMax-NORI.sinkMin)*Math.min(1,-headroom/NORI.sinkSpan);
+    if(headroom<NORI.neutral) return NORI.build*(1-headroom/NORI.neutral);
+    return -Math.min(NORI.decayMax,NORI.decayMin+(headroom-NORI.neutral)*NORI.decaySlope);
+  }
   function shapeHeat(m,value){
-    // 出力波形の潰れ具合(クレストの低下)で海苔を判定。元々音圧の高い曲でも、潰せば確実に上がる。
     var out=m.after, loud=out && db(out.rms) > -22;              // 十分な音量のある区間のみ判定
     var line=curZone ? curZone.nori : NaN;                       // レーダーの海苔ライン(曲ごとに校正)
-    var flat = loud && Number.isFinite(line) && Number.isFinite(crest1s) ? clamp((line - crest1s) / 4, 0, 1) : 0;
-    var relWarn = (m.state==='warning' && m.run>=0.5) ? 0.25 : 0;// ソース比の劣化(本来の海苔化)も上乗せ
-    var pressure = clamp(flat + relWarn, 0, 1);
-    m.pressure = pressure;
-    var rate = pressure>0.02 ? (1 + 9*pressure) : -3;            // 攻めるほど速く上昇、緩めれば減衰
+    var judged=loud && Number.isFinite(line) && Number.isFinite(crest1s);
+    var rate=judged ? noriRateFor(crest1s-line) : -NORI.decayMax;
+    if(m.state==='warning' && m.run>=0.5) rate+=NORI.relWarn;   // ソース比の劣化(本来の海苔化)も上乗せ
+    m.headroom=judged ? crest1s-line : NaN;
+    noriRate=rate;
     return clamp(value + rate*0.25, 0, 100);
   }
   function showObserver(m){lastShape=m;nori=shapeHeat(m,nori);
-    var crushing=m.pressure>0.04;
-    putText('shapeStatus',crushing?'海苔ゾーンに沈んでいます':nori>1?'海苔を回復中':'波形は保たれています');
-    putText('shapeHint',crushing?'GAIN↓ か RELEASE↑ で上へ戻そう':'山を残せています');
+    var sunk=m.headroom<=0, building=noriRate>0.05;
+    putText('shapeStatus',sunk?'海苔ゾーンに沈んでいます':building?'海苔がたまっています':nori>1?'海苔を回復中':'波形は保たれています');
+    putText('shapeHint',sunk?'GAIN↓ か RELEASE↑ で上へ戻そう':building?'上へ余裕を作ると回復':'山を残せています');
   }
-  function resetObserver(){lastShape=null;if(liveObserver)liveObserver.reset();putText('shapeStatus','開始後に波形を判定');putText('shapeHint','GAINで右（音圧）、RELEASEで上（山）へ');}
+  function resetObserver(){lastShape=null;noriRate=0;if(liveObserver)liveObserver.reset();putText('shapeStatus','開始後に波形を判定');putText('shapeHint','GAINで右（音圧）、RELEASEで上（山）へ');}
   async function prepareObserver(){if(observerReady)return observerReady;observerReady=(async function(){
     var oc=new OfflineAudioContext(1,Math.ceil(ctx.sampleRate*.1),ctx.sampleRate),pulse=oc.createBuffer(1,Math.ceil(ctx.sampleRate*.1),ctx.sampleRate),at=Math.round(ctx.sampleRate*.01);pulse.getChannelData(0)[at]=.01;
     var s=oc.createBufferSource();s.buffer=pulse;var comp=oc.createDynamicsCompressor();comp.threshold.value=-1;comp.knee.value=0;comp.ratio.value=20;comp.attack.value=.002;comp.release.value=.12;var clip=oc.createWaveShaper();clip.curve=clipCurve(CEIL);clip.oversample='2x';s.connect(comp).connect(clip).connect(oc.destination);s.start();var a=(await oc.startRendering()).getChannelData(0),peak=0;for(var i=0;i<a.length;i++)if(Math.abs(a[i])>Math.abs(a[peak]))peak=i;var delay=(peak-at)/ctx.sampleRate;if(delay<0||delay>.03)throw Error('時間補正を測定できません');
@@ -1957,7 +1975,7 @@
     mPeak.classList.toggle("over", pdb > CEIL_DB - 0.02);
 
     fNori.style.right = (100 - nori) + "%";
-    vNori.textContent = Math.round(nori);
+    vNori.textContent = Math.round(nori) + (noriRate > 0.05 && nori < 100 ? " ▲" : (noriRate < -0.05 && nori > 0 ? " ▼" : ""));
     vScore.textContent = Math.round(score).toLocaleString("en-US");
     hudTime.textContent = fmtTime(Math.min(elapsed, session)) + " / " + fmtTime(session);
 
