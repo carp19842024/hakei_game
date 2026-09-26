@@ -257,6 +257,36 @@
   .btn:disabled{opacity:.55;cursor:wait}
   .m__mark{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--red);box-shadow:0 0 4px rgba(204,59,42,.9)}
   .m.over .m__val{color:var(--red)}
+  /* ---------- feedback: popups, combo, nori fog, GR ---------- */
+  .nori-fog{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .4s;
+    background:radial-gradient(120% 90% at 50% 60%,rgba(22,48,31,.35),rgba(22,48,31,.92) 70%),
+      repeating-linear-gradient(115deg,rgba(63,122,85,.18) 0 2px,transparent 2px 9px)}
+  .pop{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);pointer-events:none;white-space:nowrap;
+    font-family:var(--cond);font-weight:700;font-size:clamp(26px,6vw,46px);letter-spacing:.06em;color:#ffe1a0;
+    text-shadow:0 0 18px rgba(242,166,59,.8),0 2px 0 rgba(0,0,0,.6);opacity:0}
+  .pop small{display:block;text-align:center;font-size:.42em;letter-spacing:.2em;color:#e8e2d3}
+  .pop.good{color:#b9ff9b;text-shadow:0 0 18px rgba(143,224,106,.8),0 2px 0 rgba(0,0,0,.6)}
+  .pop.bad{color:#ff8a78;text-shadow:0 0 18px rgba(204,59,42,.8),0 2px 0 rgba(0,0,0,.6)}
+  .pop.show{animation:popin 1.3s ease-out forwards}
+  @keyframes popin{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}
+    22%{transform:translate(-50%,-50%) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-80%) scale(1)}}
+  .combo{position:absolute;left:12px;top:30px;font-family:var(--cond);font-weight:700;font-size:15px;letter-spacing:.1em;
+    color:#b9ff9b;text-shadow:0 0 10px rgba(143,224,106,.7);pointer-events:none;opacity:0;transition:opacity .25s}
+  .combo.on{opacity:1}
+  .combo b{font-size:24px;font-family:var(--mono)}
+  .scope.flash{box-shadow:inset 0 0 0 3px var(--amber),inset 0 0 40px rgba(242,166,59,.5)}
+  .score.bump b{animation:bump .45s ease-out}
+  @keyframes bump{0%{transform:scale(1)}30%{transform:scale(1.25);color:#ffe1a0}100%{transform:scale(1)}}
+  .m.danger{animation:danger .6s ease-in-out infinite alternate}
+  @keyframes danger{from{box-shadow:inset 0 0 0 2px rgba(204,59,42,.2)}to{box-shadow:inset 0 0 0 2px rgba(204,59,42,.95)}}
+  .gr{display:flex;align-items:center;gap:8px;margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--ink-soft)}
+  .gr__bar{position:relative;flex:1;height:7px;border-radius:3px;background:#2b2721;box-shadow:inset 0 1px 3px rgba(0,0,0,.8);overflow:hidden}
+  .gr__bar i{position:absolute;top:0;bottom:0;right:0;width:0;background:linear-gradient(90deg,#cc3b2a,#f2a63b)}
+  #vGR{min-width:6.5em;text-align:right;color:var(--ink);font-weight:600}
+  .se-toggle{margin-left:12px;font-family:var(--cond);font-size:12px;letter-spacing:.14em;padding:3px 9px;border-radius:3px;
+    border:1px solid rgba(32,29,24,.4);background:rgba(255,255,255,.25);color:var(--ink);cursor:pointer}
+  .se-toggle[aria-pressed="false"]{opacity:.55}
+  @media (prefers-reduced-motion:reduce){.pop.show{animation-duration:.01s}.m.danger{animation:none;box-shadow:inset 0 0 0 2px var(--red)}}
   .m__mark.floor{background:#b9ff9b;box-shadow:0 0 4px rgba(143,224,106,.9)}
 
   /* ---------- 2D radar: loudness (x) × crest (y) ---------- */
@@ -389,6 +419,11 @@
     .brand{font-size:22px}
     .brand em{font-size:12px;letter-spacing:.22em}
     .head-sub{display:none}
+    .se-toggle{margin-left:auto}
+    .combo{top:26px;left:8px;font-size:11px}
+    .combo b{font-size:16px}
+    .pop{left:27%;top:40%;font-size:24px}   /* 右のレーダー・下の吹き出しと重ならない位置に */
+    .pop small{display:none}
     .score{margin-left:0;width:100%;justify-content:space-between}
     /* 開始画面: 曲選択をスクロールなしで見せるためコンパクト化 */
     .screen{gap:8px;padding:14px 16px}
@@ -443,10 +478,13 @@
     <div class="head">
       <div class="brand"><span class="lamp" id="lamp"></span>NG&#8209;1<em>Nori&nbsp;Guard</em></div>
       <div class="head-sub">Mastering Limiter / Loudness War Edition</div>
+      <button class="se-toggle" id="seBtn" type="button" aria-pressed="true">SE ON</button>
     </div>
 
     <div class="scope" id="scopeBox">
       <canvas id="scope"></canvas>
+      <div class="nori-fog" id="noriFog" aria-hidden="true"></div>
+      <div class="combo" id="combo" aria-hidden="true">COMBO <b id="comboN">0</b>s</div>
 
       <div class="hud">
         <div class="hud__target">TARGET <b id="hudTarget">−13.0</b> LUFS</div>
@@ -456,6 +494,7 @@
       <div class="xy" id="xyBox" hidden><canvas id="xy" aria-label="音圧と山のレーダー"></canvas></div>
 
       <div class="bubble" id="bubble" hidden></div>
+      <div class="pop" id="pop" aria-live="polite"></div>
 
       <!-- start -->
       <section class="screen" id="scrStart">
@@ -563,6 +602,7 @@
         </div>
         <input type="range" id="gain" min="-12" max="30" step="0.1" value="4" aria-label="入力ゲイン(dB)">
         <div class="ticks"><span>−12</span><span>0</span><span>+15</span><span>+30</span></div>
+        <div class="gr" title="リミッターが削っている量"><span>GR</span><div class="gr__bar"><i id="fGR"></i></div><span id="vGR">0.0 dB</span></div>
       </div>
       <div class="fader">
         <div class="fader__top">
@@ -1089,6 +1129,71 @@
     bar.style.backgroundColor=v>=MOOD.ok?'#92da89':v>=MOOD.retake?'#f2a63b':'#cc3b2a';
   }
 
+  /* ----- feel: sound effects, popups, combo, nori fog, gain reduction ----- */
+  var seOn=true, seBus=null, fx=null;
+  try{seOn=localStorage.getItem("ng1.se")!=="off";}catch(e){}
+  // Effects go straight to the speakers: they never pass the limiter or the meters, so they cannot affect scoring.
+  function blip(freq,at,len,type,vol,slideTo){
+    if(!seOn||!ctx)return;
+    if(!seBus){seBus=ctx.createGain();seBus.gain.value=0.5;seBus.connect(ctx.destination);}
+    var t=ctx.currentTime+(at||0),o=ctx.createOscillator(),g=ctx.createGain();
+    o.type=type||"sine";o.frequency.setValueAtTime(freq,t);
+    if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,t+len);
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol||0.12,t+0.008);g.gain.exponentialRampToValueAtTime(0.0001,t+len);
+    o.connect(g).connect(seBus);o.start(t);o.stop(t+len+0.02);
+  }
+  var SE={
+    tick:function(){blip(880,0,0.07,"sine",0.1);},
+    go:function(){blip(1320,0,0.16,"triangle",0.14);blip(1760,0.05,0.14,"sine",0.07);},
+    clear:function(){[660,880,1320].forEach(function(f,i){blip(f,i*0.07,0.18,"triangle",0.13);});},
+    fail:function(){blip(440,0,0.28,"square",0.05,300);},
+    combo:function(){blip(1175,0,0.06,"sine",0.08);blip(1568,0.07,0.09,"sine",0.08);},
+    warn:function(){blip(110,0,0.22,"sawtooth",0.07);blip(110,0.3,0.22,"sawtooth",0.07);}
+  };
+  function popText(text,sub,cls){
+    var el=$("pop");el.className="pop";el.textContent=text;
+    if(sub){var sm=document.createElement("small");sm.textContent=sub;el.appendChild(sm);}
+    void el.offsetWidth;el.className="pop show"+(cls?" "+cls:"");
+  }
+  function pulseClass(el,cls,ms){el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);setTimeout(function(){el.classList.remove(cls);},ms);}
+  function fxClear(){
+    $("pop").className="pop";$("combo").classList.remove("on");$("noriFog").style.opacity=0;
+    $("mNori").classList.remove("danger");$("fGR").style.width="0%";putText("vGR","0.0 dB");
+  }
+  function Fx(){this.results=0;this.count="";this.nextCombo=10;this.warned=false;this.gr=0;}
+  Fx.prototype.update=function(run,dt){
+    var m=run.chart.missions[run.index],t=run.time;
+    // 3-2-1-START before each challenge
+    if(m){
+      var left=Math.ceil(m.start-t-1e-6);
+      if(left>=1&&left<=3&&this.count!==run.index+":"+left){this.count=run.index+":"+left;SE.tick();popText(String(left));}
+      if(t>=m.start&&this.count!==run.index+":go"){this.count=run.index+":go";SE.go();popText("START!",m.name);pulseClass(scopeBox,"flash",350);}
+    }
+    if(run.results.length>this.results){
+      this.results=run.results.length;var r=run.lastResult;
+      if(r.success){SE.clear();popText("+"+r.reward,"CLEAR!","good");pulseClass(document.querySelector(".score"),"bump",500);}
+      else{SE.fail();popText("MISS","課題終了","bad");}
+    }
+    // combo = uninterrupted time inside the zone (the same streak that charges the stability bonus)
+    var combo=run.hold;
+    $("combo").classList.toggle("on",combo>=3);
+    putText("comboN",String(Math.floor(combo)));
+    var countdown=m&&m.start-t<=3.5&&m.start-t>-1;   // keep 3-2-1 readable; the milestone waits
+    if(combo>=this.nextCombo&&!countdown){SE.combo();popText("COMBO "+this.nextCombo,"","good");this.nextCombo+=10;}
+    else if(combo<1)this.nextCombo=10;
+    // nori danger: the scope clouds over, the meter pulses, a buzzer sounds once per crossing
+    if(nori>=65&&!this.warned){this.warned=true;SE.warn();}
+    if(nori<50)this.warned=false;
+    $("noriFog").style.opacity=clamp((nori-30)/70,0,1)*0.8;
+    $("mNori").classList.toggle("danger",nori>=65);
+    // gain reduction from the real limiter; instant rise, slow fall so it stays readable
+    var red=0;
+    if(lim){var rv=lim.reduction;red=Math.max(0,-(typeof rv==="number"?rv:(rv&&rv.value)||0));}
+    this.gr=red>this.gr?red:this.gr+(red-this.gr)*(1-Math.exp(-dt*4));
+    $("fGR").style.width=clamp(this.gr/12,0,1)*100+"%";
+    putText("vGR",(this.gr>=0.05?"−":"")+this.gr.toFixed(1)+" dB");
+  };
+
   function trackLabel(key){ var d = TRACKS[key]; return d.name + " (" + d.genre + ")"; }
   function currentPar(){ return gameChart ? gameChart.maxScore : 1; }
 
@@ -1578,6 +1683,7 @@
     run = new PerformanceRun(gameChart);
     director = new ClientDirector(CLIENTS[isDemo ? "demo" : activeKey] || CLIENTS.demo);
     putText("clientWho", director.p.who); renderMood();
+    fx = new Fx(); fxClear();
     DEMANDS = gameChart.demands;
     demandIdx = 0; target = DEMANDS[0].target;
     lufsRing = []; lufsSum = 0; lufsDuration = 0; crest1s = NaN; crestRing = []; crestDur = 0; peakHold = 0; peakHoldT = 0;
@@ -1636,7 +1742,7 @@
   function stop(){
     ++runToken;stopSource();killFading();mode="idle";lockSelection(false);$("pauseBtn").hidden=true;
     lamp.classList.remove("on");playBtn.textContent="▶ 開始";bubble.hidden=true;
-    setScreen(scrStart);bootMsg.textContent="課題曲を選んで開始してください";idleWave();scopeDirty=true;
+    setScreen(scrStart);bootMsg.textContent="課題曲を選んで開始してください";idleWave();scopeDirty=true;fxClear();
   }
   function pause(){
     if(mode!=="play")return;
@@ -1730,6 +1836,7 @@
     if(trailT>=0.1&&isFinite(lufs)&&isFinite(crest1s)){trailT=0;xyTrail.push({L:lufs,c:crest1s});if(xyTrail.length>24)xyTrail.shift();}
     xyDirty=true;
     director.update(run,curZone,lufs,dt);
+    fx.update(run,dt);
     renderMood();
     renderPerformance(lufs,crest1s);
     if(lufs<lo)underTime+=dt;else if(lufs>hi)overTime+=dt;else inRangeTime+=dt;
@@ -1773,6 +1880,7 @@
     lamp.classList.remove("on");
     playBtn.textContent = "▶ 開始";
     bubble.hidden = true;
+    fxClear();
 
     var integrated = sumN > 0 ? -0.691 + 10 * Math.log10(Math.max(sumSq / sumN, 1e-10)) : -70;
     var avgCrest = crestT > 0 ? crestAcc / crestT : (isFinite(crest1s) ? crest1s : 0);
@@ -1843,6 +1951,12 @@
   });
   $("pauseBtn").addEventListener("click",function(){if(mode==="paused")resume();else pause();});
   startBtn.addEventListener("click", start);
+  function renderSe(){var b=$("seBtn");b.textContent=seOn?"SE ON":"SE OFF";b.setAttribute("aria-pressed",String(seOn));}
+  $("seBtn").addEventListener("click",function(){
+    seOn=!seOn;renderSe();
+    try{localStorage.setItem("ng1.se",seOn?"on":"off");}catch(e){}
+  });
+  renderSe();
   $("overRetry").addEventListener("click", start);
   $("resRetry").addEventListener("click", start);
   $("overTitle").addEventListener("click", stop);   // タイトル画面へ戻る
