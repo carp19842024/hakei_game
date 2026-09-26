@@ -893,9 +893,9 @@
         for(var k=0;k<secs;k++){
           punch[k]=Math.max(punch[k],floor[k]+0.4);
           // Nori line from the best reachable crest, so every track has the same build/recover feel:
-          // at the box centre with a good release the gauge creeps up slowly; the left edge recovers.
+          // at the box centre with a good release the gauge slowly recovers; the loud (right) half fills it.
           var best=punch[k]+ZONE.punchSlack;
-          nori.push(Number.isFinite(floor[k])?Math.min(ZONE.noriMax,best-(NORI.neutral-0.2),floor[k]-0.3):NaN);
+          nori.push(Number.isFinite(floor[k])?Math.min(ZONE.noriMax,best-(NORI.neutral+NORI.centre),floor[k]-0.3):NaN);
         }
         chart.zone={floor:floor,punch:punch,nori:nori};
         return chart;
@@ -1356,7 +1356,8 @@
   //   0〜neutral … 攻めている(枠の下のほう＝音圧側)。じわじわ増える(最大3/秒)
   //   neutral以上 … 余裕あり。回復(1〜4/秒)
   // 通常のデフォルト設定で枠の中心にいると、ほぼ増減なし(neutral付近)になるよう校正済み。
-  var NORI = { neutral:2.4, build:4, sinkMin:3, sinkMax:15, sinkSpan:3, decayMin:1, decayMax:4, decaySlope:2, relWarn:2 };
+  // centre: headroom above neutral at the box centre with the best release (+ = centre recovers, − = centre builds)
+  var NORI = { neutral:2.4, centre:0.1, build:6, sinkMin:3, sinkMax:10, sinkSpan:3, decayMin:2, decayMax:6, decaySlope:2, relWarn:2 };
   var noriRate = 0;
   function noriRateFor(headroom){
     if(headroom<=0) return NORI.sinkMin+(NORI.sinkMax-NORI.sinkMin)*Math.min(1,-headroom/NORI.sinkSpan);
