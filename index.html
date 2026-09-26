@@ -684,7 +684,8 @@
     release:{name:'ポンピングを抑えて', goal:0.5,  center:0.75, half:1.25, floor:0,      reward:200, rel:250},
     muri:   {name:'無茶振り：もっと音圧を！', goal:3.2, center:0.6, half:0.9, floor:-0.8, reward:300, noriCap:30}
   };
-  var MOOD = { start:60, bonus:5, ok:70, retake:40 };   // client mood 0..100; bonus = mood × 5 points
+  var MOOD = { start:60, bonus:5, ok:70, retake:40 };
+  var RANK = { master:0.75, engineer:0.55, assistant:0.30 };  // 攻略率の閾値   // client mood 0..100; bonus = mood × 5 points
 
   function baseTarget(t,duration){ return -13+2.5*t/duration; }
   function addMission(missions,demands,start,type,duration){
@@ -1610,7 +1611,7 @@
   var mode = "idle";               // idle | loading | play | paused | over | done
   var elapsed = 0, score = 0, nori = 0;
   var runToken = 0, activeKey = null, isDemo = false;
-  var inRangeTime = 0, underTime = 0, overTime = 0;
+  var underTime = 0, overTime = 0, shortTime = 0, noriMax = 0, floorAcc = 0;
   var target = -13, demandIdx = 0;
   var lufsRing = [], lufsSum = 0, lufsDuration = 0;
   var crest1s = NaN, crestRing = [], crestDur = 0, peakHold = 0, peakHoldT = 0, trailT = 0;
@@ -1678,7 +1679,7 @@
 
   function reset(){
     score = 0; nori = 0; elapsed = 0;resetObserver();
-    inRangeTime = underTime = overTime = 0; gridPhase = 0;
+    underTime = overTime = shortTime = noriMax = floorAcc = 0; gridPhase = 0;
     gameChart = chartCache[isDemo ? "demo" : activeKey];   // start() calibrates it before play
     run = new PerformanceRun(gameChart);
     director = new ClientDirector(CLIENTS[isDemo ? "demo" : activeKey] || CLIENTS.demo);
@@ -1820,14 +1821,14 @@
       if (bubbleTimer <= 0) bubble.hidden = true;
     }
 
-    // ===== 得点: 出力音圧を「適正レンジ」に合わせている間だけ、クレストが高いほど加点 =====
-    var lo = target - 0.5;           // これ未満は音圧不足(0点)
-    var hi = target + 2.0;           // ここまでは満点帯、超えると上げ過ぎ減点
-    var reached = isFinite(lufs) && lufs >= lo;
-    var overFactor = lufs > hi ? Math.max(0, 1 - (lufs - hi) / 3) : 1;   // +3dB超で0点
-    if (reached && overFactor > 0 && isFinite(crest1s)){
-      crestAcc += crest1s * dt; crestT += dt;
-    }
+    // 得点は PerformanceRun が計算する。ここではリザルト用に「どちらの軸で外れたか」を集計する。
+    var lo = target - 0.5, hi = target + 2.0, zNow = curZone;
+    var floorNow = zNow && isFinite(zNow.floor) ? zNow.floor : NaN;
+    if (isFinite(lufs) && lufs < lo) underTime += dt;
+    else if (isFinite(lufs) && lufs > hi) overTime += dt;
+    else if (isFinite(lufs) && isFinite(crest1s) && isFinite(floorNow) && crest1s < floorNow) shortTime += dt;
+    if (isFinite(crest1s) && isFinite(floorNow)){ crestAcc += crest1s * dt; floorAcc += floorNow * dt; crestT += dt; }
+    noriMax = Math.max(noriMax, nori);
 
     run.tick(dt,lufs,crest1s,nori,parseFloat(relEl.value));
     score=run.total();
@@ -1839,7 +1840,6 @@
     fx.update(run,dt);
     renderMood();
     renderPerformance(lufs,crest1s);
-    if(lufs<lo)underTime+=dt;else if(lufs>hi)overTime+=dt;else inRangeTime+=dt;
     scopeDirty=true;
     updateTarget();
     // meters
@@ -1883,7 +1883,8 @@
     fxClear();
 
     var integrated = sumN > 0 ? -0.691 + 10 * Math.log10(Math.max(sumSq / sumN, 1e-10)) : -70;
-    var avgCrest = crestT > 0 ? crestAcc / crestT : (isFinite(crest1s) ? crest1s : 0);
+    var avgCrest = crestT > 0 ? crestAcc / crestT : NaN, avgFloor = crestT > 0 ? floorAcc / crestT : NaN;
+    var span = Math.max(elapsed, 0.001), pctOf = function(t){ return Math.round(t / span * 100); };
     // The client's mood becomes a satisfaction bonus when the track is delivered (not on a nori game over).
     var mood = Math.round(run.mood), moodBonus = failed ? 0 : run.moodBonus();
     score += moodBonus;
@@ -1893,19 +1894,20 @@
 
     var cells =
       statCell("Score", Math.round(score).toLocaleString("en-US")) +
-      statCell("攻略率", Math.round(pct * 100) + " %", pct >= 0.82 ? "good" : (pct < 0.38 ? "bad" : "")) +
+      statCell("攻略率", Math.round(pct * 100) + " %", pct >= RANK.master ? "good" : (pct < RANK.assistant ? "bad" : "")) +
       statCell("通常点", Math.round(run.base).toLocaleString("en-US")) +
       statCell("安定点", Math.round(run.precision).toLocaleString("en-US")) +
       statCell("課題点", Math.round(run.missionScore).toLocaleString("en-US")) +
       statCell("課題クリア", run.successes()+" / "+gameChart.missions.length) +
       statCell("クライアント満足度", moodFace(mood) + " " + mood, mood >= MOOD.ok ? "good" : (mood < MOOD.retake ? "bad" : "")) +
-      statCell("満足度ボーナス", moodBonus.toLocaleString("en-US")) +
-      statCell("枠内キープ", Math.round(run.precisionTime/Math.max(elapsed,0.001)*100)+" %") +
+      (failed ? statCell("中断時間", fmtTime(Math.min(elapsed, session))) : statCell("満足度ボーナス", moodBonus.toLocaleString("en-US"))) +
+      statCell("枠内キープ", pctOf(run.precisionTime) + " %") +
+      statCell("音圧 不足 / 過剰", pctOf(underTime) + " / " + pctOf(overTime) + " %", underTime + overTime > span * 0.25 ? "bad" : "") +
+      statCell("山不足", pctOf(shortTime) + " %", shortTime > span * 0.15 ? "bad" : "") +
+      statCell("クレスト/目標 dB", isFinite(avgCrest) ? avgCrest.toFixed(1) + " / " + avgFloor.toFixed(1) : "—",
+        isFinite(avgCrest) ? (avgCrest >= avgFloor ? "good" : "bad") : "") +
       statCell("平均音圧（近似）", integrated.toFixed(1) + " LUFS") +
-      statCell("加点中クレスト", avgCrest.toFixed(1) + " dB") +
-      statCell("適正レンジ", Math.round(inRangeTime/Math.max(elapsed,0.001)*100)+" %") +
-      statCell("不足 / 過剰", underTime.toFixed(1)+" / "+overTime.toFixed(1)+" 秒") +
-      statCell("時間", fmtTime(Math.min(elapsed, session)));
+      statCell("海苔 最大", Math.round(noriMax), noriMax >= 65 ? "bad" : (noriMax < 30 ? "good" : ""));
 
     if (failed){
       $("overStats").innerHTML = cells;
@@ -1915,14 +1917,25 @@
       return;
     }
 
-    // The score ceiling includes optional precision and missions; passive base play cannot earn the top rank.
-    var rank, note;
-    if (pct >= 0.82 && mood >= MOOD.ok && run.successes() >= Math.ceil(gameChart.missions.length*0.7)){ rank = "マスタリング職人"; note = "音圧と山を両立し、安定した調整で見せ場も決めました。文句なしの納品です。"; }
-    else if (pct >= 0.62){ rank = "マスタリングエンジニア"; note = "しっかり音圧に乗せられています。適正帯のキープと課題の達成時間を伸ばせば職人です。"; }
-    else if (pct >= 0.38){ rank = "アシスタント"; note = "通常点は稼げています。次は予告付きの課題と波形の山を残す調整に挑戦しましょう。"; }
-    else { rank = "見習い"; note = "目標レンジに乗れていない時間が長すぎました。不足は加点停止、上げ過ぎは加点が減ります。まずは的に当て続けることから。"; }
+    // Thresholds are calibrated for the 2D zone: an attentive rider scores ~80 %, since dead-centre every second is not realistic.
+    var missionsOk = run.successes() >= Math.ceil(gameChart.missions.length * 0.7), retake = mood < MOOD.retake;
+    var rank;
+    if (pct >= RANK.master && mood >= MOOD.ok && missionsOk) rank = "マスタリング職人";
+    else if (pct >= RANK.engineer && !retake) rank = "マスタリングエンジニア";
+    else if (pct >= RANK.assistant) rank = "アシスタント";
+    else rank = "見習い";
 
-    var normTxt = note + " 加点中の平均クレストは " + avgCrest.toFixed(1) + " dB。攻略率は通常点・安定点・課題点・満足度ボーナスの合計を上限と比較した値です。同じ曲は同じ課題で再挑戦できます。";
+    // Advice targets the biggest loss, in the radar's own terms.
+    var note, worst = Math.max(underTime, overTime, shortTime);
+    if (rank === "マスタリング職人") note = "音圧と山を両立し、見せ場の課題も決めました。文句なしの納品です。";
+    else if (worst > span * 0.12 && worst === underTime) note = "点が緑の枠より左（音圧不足）にいた時間が " + pctOf(underTime) + "% ありました。不足中は通常点が入りません。GAINを上げて右へ。";
+    else if (worst > span * 0.12 && worst === overTime) note = "点が緑の枠より右（音圧過多）にいた時間が " + pctOf(overTime) + "% ありました。上げ過ぎは加点が減り、海苔にも近づきます。GAINを下げて左へ。";
+    else if (worst > span * 0.12) note = "音圧は合っていても、山が枠の下限より低い時間が " + pctOf(shortTime) + "% ありました。RELEASEを伸ばすか、音圧を枠の左寄りにして上へ。";
+    else if (!missionsOk) note = "枠のキープは安定しています。次は課題：予告で準備して、オレンジの枠に合計5秒入れましょう（クリア " + run.successes() + " / " + gameChart.missions.length + "）。";
+    else if (mood < MOOD.ok) note = "課題はこなせています。枠の中に長く居続けるとクライアントの機嫌が上がり、満足度ボーナスも増えます。";
+    else note = "良い仕上がりです。枠の中心（点線）に近づけるほど通常点が伸び、職人に届きます。";
+
+    var normTxt = note + " 攻略率は通常点・安定点・課題点・満足度ボーナスの合計を満点と比べた値です。同じ曲は同じ課題で再挑戦できます。";
 
     var who = director.p.who;
     if (mood >= MOOD.ok){ $("resTitle").textContent = "一発OK！ 納品完了"; normTxt = who + "「ありがとうございます、このまま使います！」 " + normTxt; }
