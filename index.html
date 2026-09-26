@@ -534,7 +534,7 @@
             <li>右上の<b>レーダー</b>は 横＝音圧(LUFS)、縦＝山(クレスト)。光る点を<b>緑の枠</b>に入れよう。</li>
             <li><b>GAINを上げると点は右下へ</b>（大きく・平らに）。<b>RELEASEを伸ばすと上へ</b>（山が残る代わりに少し小さく）。</li>
             <li>枠の<b>中心に近いほど高得点</b>。枠内に居続けると<b>安定ボーナス</b>が加点されます。</li>
-            <li><b>クライアントの依頼</b>が5秒前に届き、<b>オレンジの枠</b>が出現。「音圧を上げて」は右へ、「山を残して」は上へ、「ブレイクは静かに」は左へ、「ポンピングを抑えて」はRELEASEを長く。10秒中<b>合計5秒</b>で+200点。</li>
+            <li><b>クライアントの依頼</b>が5秒前に届き、<b>オレンジの枠</b>が出現。「音圧を上げて」は右へ、「山を残して」は上へ、「静かなパートは静かに」は左へ、「ポンピングを抑えて」はRELEASEを長く。10秒中<b>合計5秒</b>で+200点。</li>
             <li>クライアントの<b>機嫌</b>は課題の成否や音の状態で上下し、最後に<b>満足度ボーナス</b>に。40未満だと<b>リテイク</b>。たまに来る<b>無茶振り</b>は失敗しても機嫌はあまり下がりません。</li>
             <li>枠より下の<b>海苔ゾーン</b>に沈むと海苔メーターが上昇。65でボーナス停止、100で終了。上へ戻ると回復します。</li>
           </ol>
@@ -678,9 +678,9 @@
   // Challenge catalogue. goal: demand offset from the running base target. center/half: orange box
   // relative to goal. floor: offset from the green floor, or 'punch' for the calibrated high floor.
   var MISSIONS = {
-    push:   {name:'サビで音圧を上げて', goal:1.8,  center:1.1,  half:0.9,  floor:-0.3,   reward:200},
+    push:   {name:'ここから音圧を上げて', goal:1.8,  center:1.1,  half:0.9,  floor:-0.3,   reward:200},
     punch:  {name:'山を残して',         goal:0.5,  center:0.75, half:1.25, floor:'punch', reward:200},
-    quiet:  {name:'ブレイクは静かに',   goal:-3.0, center:0.25, half:0.75, floor:0,      reward:200},
+    quiet:  {name:'静かなパートは静かに', goal:-3.0, center:0.25, half:0.75, floor:0,      reward:200},
     release:{name:'ポンピングを抑えて', goal:0.5,  center:0.75, half:1.25, floor:0,      reward:200, rel:250},
     muri:   {name:'無茶振り：もっと音圧を！', goal:3.2, center:0.6, half:0.9, floor:-0.8, reward:300, noriCap:30}
   };
@@ -1079,7 +1079,8 @@
     demo:    { who:"Client", hello:"よろしくお願いします！", muri:"もっと音圧いけます？" }
   };
   var LINES = {
-    preview:{ push:"次のサビ、ドーンと上げてほしいです！", punch:"次はキックの山を残したいな", quiet:"次のブレイクは静かに聴かせたいです",
+    // 課題の位置は音量の変化から自動で決めるため、サビ・ブレイクなど曲の構成を断定する言い方はしない。
+    preview:{ push:"次のところ、グッと音圧を上げてほしいです！", punch:"次は音の山（アタック）を残したいな", quiet:"次の静かなパートは、静かなまま聴かせたいです",
       release:"ここ、ポンピングが気になるのでリリース長めで" },
     success:["いいね！その感じ！","完璧です！","おお、分かってますね〜","そうそう、それです！"],
     muriSuccess:"すごい、あの音圧で潰れてない…！",
