@@ -218,6 +218,31 @@
   .trk:has(input:checked) .trk__name{color:#ffe0ad}
   .trk:focus-within{outline:2px solid var(--amber);outline-offset:2px}
 
+  /* ---------- loading progress (start screen) ---------- */
+  #scrStart .src{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.5;color:#b7bfb6}   /* 長い案内も切らずに折り返し、暗い背景で読める色に */
+  .loadprog{width:100%;max-width:560px;display:flex;flex-direction:column;gap:6px}
+  .loadprog__steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+  .loadprog__steps span{font-family:var(--cond);font-size:11px;letter-spacing:.08em;color:#6f7d72;text-align:center;white-space:nowrap;
+    padding:3px 0;border-radius:3px;background:rgba(150,170,155,.08);transition:color .2s,background-color .2s}
+  .loadprog__steps span.done{color:#0f1a12;background:#92da89}
+  .loadprog__steps span.now{color:#ffd489;background:rgba(242,166,59,.18)}
+  .loadprog__bar{position:relative;height:10px;border-radius:5px;background:#1d2721;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.8)}
+  .loadprog__bar i{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,#5fa8a0,#92da89);transition:width .35s ease-out}
+  .loadprog__bar i::after{content:"";position:absolute;inset:0;
+    background:repeating-linear-gradient(115deg,rgba(255,255,255,.22) 0 8px,transparent 8px 16px);background-size:32px 100%;animation:loadstripe .8s linear infinite}
+  .loadprog.ready .loadprog__bar i::after{animation:none;background:none}
+  @keyframes loadstripe{to{background-position:32px 0}}
+  .loadprog__meta{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#b7bfb6}
+  .loadprog__meta b{font-family:var(--mono);font-weight:600;color:#e4dccb}
+  .loadprog.ready .loadprog__meta b{color:var(--lamp)}
+  @media (prefers-reduced-motion:reduce){.loadprog__bar i::after{animation:none}}
+  @media (max-width:720px){
+    .loadprog{max-width:none;gap:5px}
+    .loadprog__steps span{font-size:9.5px;letter-spacing:.02em;padding:2px 0}
+    .loadprog__bar{height:8px}
+    .loadprog__meta{font-size:11px}
+  }
+  @media (max-width:380px){ .loadprog__steps{display:none} }   /* 極小画面はバーと文字だけ */
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:1px;background:rgba(150,170,155,.16);border:1px solid rgba(150,170,155,.16)}
   .stats div{background:#0c1210;padding:9px 11px}
   .stats dt{font-family:var(--cond);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#7d8c80;margin:0 0 3px}
@@ -620,6 +645,11 @@
           <input type="file" id="pickFile" accept="audio/*,.mp3,.wav,.m4a" hidden>
           <span class="src" id="bootMsg">音声エンジン待機中</span>
         </div>
+        <div class="loadprog" id="loadProg" hidden role="progressbar" aria-label="課題曲の準備" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="loadprog__steps" id="loadSteps" aria-hidden="true"></div>
+          <div class="loadprog__bar"><i id="loadFill"></i></div>
+          <div class="loadprog__meta"><span id="loadLabel">読み込み中…</span><b id="loadPct">0%</b></div>
+        </div>
         <div class="howto">
           <span class="howto__lab">遊び方</span>
           <ol>
@@ -905,7 +935,8 @@
   function smoothSeries(a,r){
     return a.map(function(_,i){var s=0,n=0;for(var j=i-r;j<=i+r;j++)if(Number.isFinite(a[j])){s+=a[j];n++;}return n?s/n:NaN;});
   }
-  function calibrateZone(chart,buf){
+  function calibrateZone(chart,buf,onStep){
+    var step=0, tick=function(r){ step++; if(onStep)onStep(step); return r; };
     var mono=monoOf(buf), secs=Math.ceil(chart.duration), T=[], g0=[];
     for(var i=0;i<secs;i++){
       T.push(targetAt(chart,i+0.5)+0.75);
@@ -914,9 +945,9 @@
     }
     function pair(rel,start){
       var gA=smoothGains(start);
-      return renderPath(mono,gA,rel).then(function(A){
+      return renderPath(mono,gA,rel).then(tick).then(function(A){
         var gB=smoothGains(gA.map(function(v,i){return v+(Number.isFinite(A.L[i])&&A.L[i]>-45?T[i]-A.L[i]:0);}));
-        return renderPath(mono,gB,rel).then(function(B){return {A:A,B:B,gB:gB};});
+        return renderPath(mono,gB,rel).then(tick).then(function(B){return {A:A,B:B,gB:gB};});
       });
     }
     return pair(0.12,g0).then(function(fast){
@@ -940,11 +971,39 @@
       });
     });
   }
+  // Real progress of preparing a track: 1 decode step + 4 offline calibration renders.
+  var PROG = { total:5, labels:["読込","解析1","解析2","解析3","解析4"] }, prog = {}, progKey = null, progHideT = 0;
+  function setProg(key,done,failed){
+    prog[key] = { done:done, failed:!!failed };
+    if(key===progKey) renderProg();
+  }
+  function showProgFor(key){
+    progKey=key;
+    if(chartCache[key] && (bufCache[key] || key==="demo")){ clearTimeout(progHideT); $("loadProg").hidden=true; return; }  // already prepared
+    renderProg();
+  }
+  function renderProg(){
+    var box=$("loadProg"), p=prog[progKey];
+    clearTimeout(progHideT);
+    if(!p || p.failed){ box.hidden=true; return; }
+    var ready=p.done>=PROG.total, pct=Math.round(p.done/PROG.total*100);
+    box.hidden=false; box.classList.toggle("ready",ready);
+    // The decode step has no measurable progress: show a sliver so the moving stripes read as "working".
+    $("loadFill").style.width=Math.max(pct,4)+"%";
+    putText("loadPct",pct+"%");
+    putText("loadLabel", ready ? "準備完了" : p.done===0 ? "音声を読み込み中…" : "課題を解析中… "+(p.done)+" / 4");
+    box.setAttribute("aria-valuenow",String(pct));
+    var steps=$("loadSteps");
+    if(!steps.children.length) PROG.labels.forEach(function(l){var sp=document.createElement("span");sp.textContent=l;steps.appendChild(sp);});
+    for(var i=0;i<steps.children.length;i++) steps.children[i].className = i<p.done ? "done" : (i===p.done && !ready ? "now" : "");
+    if(ready && mode==="idle") progHideT=setTimeout(function(){ $("loadProg").hidden=true; },900);
+  }
   function chartFor(key,buf){
     if(chartCache[key])return Promise.resolve(chartCache[key]);
     if(!chartPending[key])chartPending[key]=Promise.resolve().then(function(){
-      return calibrateZone(makeChart(buf,sessionFor(buf.duration),TRACKS[key]&&TRACKS[key].chart),buf);
-    }).then(function(chart){chartCache[key]=chart;return chart;})
+      setProg(key,1);
+      return calibrateZone(makeChart(buf,sessionFor(buf.duration),TRACKS[key]&&TRACKS[key].chart),buf,function(n){setProg(key,1+n);});
+    }).then(function(chart){chartCache[key]=chart;setProg(key,PROG.total);return chart;})
       .catch(function(e){delete chartPending[key];throw e;});
     return chartPending[key];
   }
@@ -1640,6 +1699,7 @@
     if (bufCache[key]) return Promise.resolve(bufCache[key]);
     ensureCtx();
     if (!pendCache[key]){
+      if (!chartCache[key]) setProg(key, 0);
       // まず実ファイルを fetch(http時)。失敗したら埋め込みデータで再生。
       pendCache[key] = (location.protocol === "file:" ? Promise.reject(new Error("local file")) : fetch(def.url))
         .then(function(r){ if (!r.ok) throw new Error("HTTP " + r.status); return r.arrayBuffer(); })
@@ -1649,7 +1709,7 @@
             .catch(function(e2){ throw new Error(loadFailText(key, e1, e2)); });
         })
         .then(function(b){ bufCache[key] = b; return b; })
-        .catch(function(e){ pendCache[key] = null; throw e; });
+        .catch(function(e){ pendCache[key] = null; setProg(key, 0, true); throw e; });
     }
     return pendCache[key];
   }
@@ -1889,9 +1949,11 @@
     Promise.resolve().then(function(){
       ensureCtx();return ctx.resume();
     }).then(function(){
+      showProgFor(key);
       return Promise.all([Promise.all([prepareMeter(),prepareObserver()]),loadTrack(key).then(function(buf){return {buf:buf,demo:false};}).catch(function(){return getDemo().then(function(buf){return {buf:buf,demo:true};});})]);
     }).then(function(results){
       if(token!==runToken)return results;
+      if(results[1].demo)showProgFor("demo");
       if(!chartCache[results[1].demo?"demo":key])bootMsg.textContent="課題を解析中…";
       return chartFor(results[1].demo?"demo":key,results[1].buf).then(function(){return results;});
     }).then(function(results){
@@ -2168,6 +2230,7 @@
     srcName.textContent="SOURCE: "+trackLabel(key);
     bootMsg.textContent="課題曲「"+TRACKS[key].name+"」を読み込み中…";
     $("pickBtn").hidden=true;
+    showProgFor(key);
     loadTrack(key).then(function(buf){
       if(selectedKey===key && mode==="idle")bootMsg.textContent="課題曲「"+TRACKS[key].name+"」の課題を解析中…";
       return chartFor(key,buf);
