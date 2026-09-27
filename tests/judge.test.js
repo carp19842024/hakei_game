@@ -63,5 +63,14 @@ ok(/機嫌/.test(J({ pct: 0.7, mood: 60 }).advice), "low mood → mood advice");
 ok(/職人に届きます/.test(J({ pct: 0.7 }).advice), "close to master → centre advice");
 ok(!/職人に届きます/.test(J({ pct: 0.8 }).advice), "never tell a master-level score to reach master");
 
+// 4. The completion rate shown on screen must agree with the rank thresholds
+const shownExpr = grab(/statCell\("攻略率", .+? \+ " %"/).match(/statCell\("攻略率", (.+?) \+ " %"/)[1];
+const shown = new Function("pct", "return " + shownExpr + ";");
+for (const t of [RANK.master, RANK.engineer, RANK.assistant])
+  for (let d = -0.002; d <= 0.002; d += 0.0001) {
+    const pct = t + d;
+    ok((shown(pct) >= Math.round(t * 100)) === (pct >= t - 1e-12), `shown ${shown(pct)}% vs threshold ${t} at pct=${pct}`);
+  }
+
 console.log(`${checks} checks, ${fails} failed`);
 process.exit(fails ? 1 : 0);
