@@ -1762,7 +1762,7 @@
   }
 
   /* ============ game state ============ */
-  var mode = "idle";               // idle | loading | play | paused | over | done
+  var mode = "idle";               // idle | loading | countdown | play | paused | over | done
   var elapsed = 0, score = 0, nori = 0;
   var runToken = 0, activeKey = null, isDemo = false;
   var underTime = 0, overTime = 0, shortTime = 0, noriMax = 0, noriHighTime = 0, floorAcc = 0;
@@ -1863,6 +1863,7 @@
     bubble.hidden = true; bubbleTimer = 0;
     for (var i = 0; i < hist.length; i++) hist[i] = blankCol();
     hudTarget.textContent = "−" + Math.abs(target).toFixed(1);
+    hudTime.textContent = "0:00 / " + fmtTime(session);   // correct length already during the count-in
     updateTarget();
     renderPerformance(NaN,0);
     vScore.textContent = "0";
@@ -1881,7 +1882,7 @@
     for(var i=0;i<trkRadios.length;i++)trkRadios[i].disabled=locked;
   }
   function start(){
-    if(mode === "loading" || mode === "play" || mode === "paused")return;
+    if(mode === "loading" || mode === "countdown" || mode === "play" || mode === "paused")return;
     var token=++runToken, key=TRACKS[selectedKey]?selectedKey:"track01";
     mode="loading";lockSelection(true);setScreen(scrStart);
     bootMsg.textContent="音声を準備しています…";playBtn.textContent="■ 読み込みを中止";
@@ -1902,13 +1903,36 @@
       applyTiming(track.duration);reset();
       outGain.gain.cancelScheduledValues(ctx.currentTime);outGain.gain.setValueAtTime(1,ctx.currentTime);
       if(meterNode.port)meterNode.port.postMessage(runToken);
-      srcNode=ctx.createBufferSource();srcNode.buffer=track;srcNode.connect(inGain);if(observerInput)srcNode.connect(observerInput);applyControls();
-      mode="play";$("pauseBtn").hidden=false;$("pauseBtn").textContent="Ⅱ 一時停止";setScreen(null);srcNode.start();lamp.classList.add("on");playBtn.textContent="■ 停止";
+      // Show the console first and count in; the faders already respond so the player can get set.
+      applyControls();
+      mode="countdown";$("pauseBtn").hidden=true;setScreen(null);playBtn.textContent="■ 停止";
+      countdown(token,COUNTDOWN);
     }).catch(function(err){
       if(token!==runToken)return;
       mode="idle";lockSelection(false);setScreen(scrStart);playBtn.textContent="▶ 開始";
       bootMsg.textContent="音声を開始できませんでした: "+err.message;
     });
+  }
+  var COUNTDOWN = 3;
+  function countdown(token,n){
+    if(token!==runToken||mode!=="countdown")return;
+    if(document.hidden){
+      // Tab went away mid-count: start the count again when the player is back.
+      document.addEventListener("visibilitychange",function again(){
+        if(document.hidden)return;
+        document.removeEventListener("visibilitychange",again);countdown(token,COUNTDOWN);
+      });
+      return;
+    }
+    if(n>0){
+      SE.tick();popText(String(n),n===COUNTDOWN?trackName:"");
+      setTimeout(function(){countdown(token,n-1);},1000);
+      return;
+    }
+    SE.go();popText("START!");pulseClass(scopeBox,"flash",350);
+    srcNode=ctx.createBufferSource();srcNode.buffer=track;srcNode.connect(inGain);if(observerInput)srcNode.connect(observerInput);applyControls();
+    mode="play";$("pauseBtn").hidden=false;$("pauseBtn").textContent="Ⅱ 一時停止";
+    srcNode.start();lamp.classList.add("on");
   }
   function stop(){
     ++runToken;stopSource();killFading();mode="idle";lockSelection(false);$("pauseBtn").hidden=true;
@@ -2117,7 +2141,7 @@
   relEl.addEventListener("input", applyControls);
 
   playBtn.addEventListener("click", function(){
-    if(mode === "play" || mode === "paused" || mode === "loading")stop();else start();
+    if(mode === "play" || mode === "paused" || mode === "loading" || mode === "countdown")stop();else start();
   });
   $("pauseBtn").addEventListener("click",function(){if(mode==="paused")resume();else pause();});
   startBtn.addEventListener("click", start);
