@@ -808,7 +808,9 @@
   var chartCache = {}, chartPending = {};
   var CHALLENGE = { preview:5, length:10, required:5, interval:20, charge:0.8, grace:0.7, precisionRate:24 };
   // 2D zone: floor = reachable crest at the band centre minus slack; nori line sits below it.
-  var ZONE = { half:1.25, slack:1.0, punchSlack:0.3, noriMax:8.5 };
+  // slack: how far below the reachable crest the green floor sits. 1.8 dB (was 1.0): in play the dot sat only
+  // 0.5-1.0 dB above the floor and dipped below it when pushing, so the box felt "always above".
+  var ZONE = { half:1.25, slack:1.8, punchSlack:0.3, noriMax:8.5 };
 
   function analysePhrases(buf, duration){
     var channels=[], bins=[], step=0.25;
