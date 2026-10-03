@@ -15,7 +15,7 @@
   [hidden]{display:none!important}
 .shape-feedback{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:12px;font:12px/1.5 system-ui;color:#314637}.shape-feedback span{flex-basis:100%;font-size:11px}.shape-feedback b{font-weight:600}
 </style>
-<title>音圧の達人～波形をコントロールせよ～（RELEASE比較版）</title>
+<title>音圧の達人～波形をコントロールせよ～（ポンピング比較版）</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
@@ -309,16 +309,6 @@
   .se-toggle[aria-pressed="false"]{opacity:.55}
   @media (prefers-reduced-motion:reduce){.pop.show{animation-duration:.01s}.m.danger{animation:none;box-shadow:inset 0 0 0 2px var(--red)}}
   .challenge-progress.blocked i{background:#8a8a8a}
-  .exp-badge{margin-left:12px;font-size:11px;font-weight:700;color:#7a4a10;background:rgba(242,166,59,.35);border:1px solid rgba(122,74,16,.4);border-radius:3px;padding:1px 7px;white-space:nowrap}
-  .head-sub + .exp-badge{margin-left:12px}
-  .rel-wrap{position:relative}
-  .rel-wrap input{position:relative;z-index:2}
-  .band-rail{position:absolute;left:12px;right:12px;top:50%;height:0;z-index:1}
-  .band-rail i{position:absolute;top:6px;height:5px;border-radius:2px;background:#5ea644;box-shadow:0 0 6px rgba(94,166,68,.8);transition:left .4s,width .4s}
-  .rel-wrap.off .band-rail i{background:#cc8a2a;box-shadow:0 0 6px rgba(204,138,42,.8)}
-  #relBandLab{text-transform:none;letter-spacing:.02em;font-style:normal;font-family:var(--mono);font-size:10.5px;color:#3d6b2c;margin-left:6px;font-weight:600}
-  .rel-wrap.off ~ .ticks,#relBandLab.off{color:#b5651d}
-  @media (max-width:720px){.exp-badge{font-size:9.5px;padding:0 5px;margin-left:auto}.exp-long{display:none}.exp-badge + .se-toggle{margin-left:6px}}
   .fader{position:relative}
   .fader.need input[type=range]::-webkit-slider-runnable-track{box-shadow:inset 0 2px 4px rgba(0,0,0,.85),0 0 0 2px var(--amber)}
   .fader.need input[type=range]::-moz-range-track{box-shadow:inset 0 2px 4px rgba(0,0,0,.85),0 0 0 2px var(--amber)}
@@ -334,6 +324,13 @@
   .need-mark span{position:absolute;left:0;bottom:1px;transform:translateX(-50%);white-space:nowrap;font-family:var(--mono);font-size:10px;font-weight:600;
     line-height:13px;color:#fff;background:var(--amber);border-radius:2px;padding:0 4px}
   .fader.need.ok .need-mark span,.fader.need.ok .need-mark::before{background:#5ea644}
+  .exp-badge{margin-left:12px;font-size:11px;font-weight:700;color:#7a4a10;background:rgba(242,166,59,.35);border:1px solid rgba(122,74,16,.4);border-radius:3px;padding:1px 7px;white-space:nowrap}
+  .gr.pump{margin-top:3px}
+  .gr.pump .gr__bar i{left:0;right:auto;background:linear-gradient(90deg,#5fa8a0,#9bc9a8)}
+  .gr.pump.over .gr__bar i{background:linear-gradient(90deg,#f2a63b,#cc3b2a)}
+  .gr.pump.over #vPump{color:var(--red)}
+  .pump__thr{position:absolute;top:-2px;bottom:-2px;width:2px;background:#e8e2d3;opacity:.8}
+  @media (max-width:720px){.exp-badge{font-size:9.5px;padding:0 5px;margin-left:auto}.exp-long{display:none}.exp-badge + .se-toggle{margin-left:6px}}
   .m__mark.floor{background:#b9ff9b;box-shadow:0 0 4px rgba(143,224,106,.9)}
 
   /* ---------- 2D radar: loudness (x) × crest (y) ---------- */
@@ -584,6 +581,9 @@
     body.in-session .score b{font-size:16px}
   }
   @media (max-width:720px) and (max-height:680px){   /* iPhone SE 級の低い画面だけ、もう一段詰める */
+    body.in-session .gr-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+    body.in-session .gr-row .gr{margin-top:0}
+    body.in-session #vGR,body.in-session #vPump{min-width:0}
     body.in-session{padding-block:4px}
     body.in-session .head{padding-bottom:3px;margin-bottom:4px}
     body.in-session input[type=range]{height:36px}
@@ -609,7 +609,7 @@
     <div class="head">
       <div class="brand"><span class="lamp" id="lamp"></span>NG&#8209;1<em>Nori&nbsp;Guard</em></div>
       <div class="head-sub">Mastering Limiter / Loudness War Edition</div>
-      <span class="exp-badge" title="RELEASEに「ちょうどいい範囲」がある比較用の試作版">比較版<span class="exp-long">：RELEASE適正範囲</span></span>
+      <span class="exp-badge" title="ポンピング（うねり）を実測してペナルティにする比較用の試作版">比較版<span class="exp-long">：ポンピング</span></span>
       <button class="se-toggle" id="seBtn" type="button" aria-pressed="true">SE ON</button>
     </div>
 
@@ -681,9 +681,9 @@
           <span class="howto__lab">遊び方</span>
           <ol>
             <li>右上の<b>レーダー</b>は 横＝音圧(LUFS)、縦＝山(クレスト)。光る点を<b>緑の枠</b>に入れよう。</li>
-            <li><b>GAINを上げると点は右下へ</b>（大きく・平らに）。<b>RELEASE</b>は曲のノリに合わせる：つまみ下の<b>緑の範囲</b>に入れると海苔がたまりにくい。<b>短すぎると歪み、長すぎるとポンピング</b>で海苔が増えます。範囲は曲の場所によって動きます。</li>
+            <li><b>GAINを上げると点は右下へ</b>（大きく・平らに）。<b>RELEASE</b>は歪みの調整：短いほど同じGAINで音圧が出るが<b>海苔がたまりやすく</b>、長いほど<b>きれい</b>だが音圧が下がります。強く攻めたまま<b>中くらい（100〜200ms）</b>だと<b>うねり（ポンピング）</b>が出て、依頼主の機嫌と通常点が下がります（GRの下の「うねり」メーター）。</li>
             <li>枠の<b>中心に近いほど高得点</b>。枠内に居続けると<b>安定ボーナス</b>が加点されます。</li>
-            <li><b>クライアントの依頼</b>が5秒前に届き、<b>オレンジの枠</b>が出現。「音圧を上げて」は右へ、「山を残して」は上へ、「静かなパートは静かに」は左へ、「リリースを曲に合わせて」はRELEASEを緑の範囲に。課題ごとの条件が足りないと枠が点線になります。10秒中<b>合計5秒</b>で+200点。</li>
+            <li><b>クライアントの依頼</b>が5秒前に届き、<b>オレンジの枠</b>が出現。「音圧を上げて」は右へ、「山を残して」は上へ、「静かなパートは静かに」は左へ、「歪みを抑えて」はRELEASEを長く。課題ごとの条件が足りないと枠が点線になります。10秒中<b>合計5秒</b>で+200点。</li>
             <li>クライアントの<b>機嫌</b>は課題の成否や音の状態で上下し、最後に<b>満足度ボーナス</b>に。40未満だと<b>リテイク</b>。たまに来る<b>無茶振り</b>は失敗しても機嫌はあまり下がりません。</li>
             <li><b>海苔メーター</b>は常に増減します。枠の下のほう（音圧を攻めた側）ではじわじわ増え、上に余裕を作ると回復。枠より下の<b>海苔ゾーン</b>に沈むと急増。65でボーナス停止、100で終了。</li>
           </ol>
@@ -751,17 +751,17 @@
         </div>
         <input type="range" id="gain" min="-12" max="30" step="0.1" value="4" aria-label="入力ゲイン(dB)">
         <div class="ticks"><span>−12</span><span>0</span><span>+15</span><span>+30</span></div>
-        <div class="gr" title="リミッターが削っている量"><span>GR</span><div class="gr__bar"><i id="fGR"></i></div><span id="vGR">0.0 dB</span></div>
+        <div class="gr-row"><div class="gr" title="リミッターが削っている量"><span>GR</span><div class="gr__bar"><i id="fGR"></i></div><span id="vGR">0.0 dB</span></div>
+        <div class="gr pump" title="ポンピング：削る量が1秒の中でどれだけ上下しているか（実測）"><span>うねり</span><div class="gr__bar"><i id="fPump"></i><b class="pump__thr" id="pumpThr"></b></div><span id="vPump">0.00 dB</span></div></div>
       </div>
       <div class="fader">
         <div class="fader__top">
-          <div class="fader__name">Release<i>リリース <b id="relBandLab"></b></i></div>
+          <div class="fader__name">Release<i>リリース</i></div>
           <div class="fader__val" id="vRel">120 ms</div>
         </div>
         <div class="need-rail" aria-hidden="true"><div class="need-mark" id="relNeed" hidden><span id="relNeedLab">250ms↑</span></div></div>
-        <div class="rel-wrap"><input type="range" id="rel" min="5" max="400" step="5" value="120" aria-label="リリースタイム(ミリ秒)">
-          <div class="band-rail" aria-hidden="true"><i id="relBand" hidden></i></div></div>
-        <div class="ticks"><span>5</span><span>速い：歪み ←→ 遅い：ポンピング</span><span>400</span></div>
+        <input type="range" id="rel" min="5" max="400" step="5" value="120" aria-label="リリースタイム(ミリ秒)">
+        <div class="ticks"><span>5</span><span>速い：音圧↑ 海苔↑ ←→ 遅い：きれい</span><span>400</span></div>
       </div>
     </div>
 
@@ -832,7 +832,7 @@
     push:   {name:'ここから音圧を上げて', goal:1.8,  center:1.1,  half:0.9,  floor:-0.3,   reward:200},
     punch:  {name:'山を残して',         goal:0.5,  center:0.75, half:1.25, floor:'punch', reward:200},
     quiet:  {name:'静かなパートは静かに', goal:-3.0, center:0.25, half:0.75, floor:0,      reward:200},
-    release:{name:'リリースを曲に合わせて', goal:0.5, center:0.75, half:1.25, floor:0,   reward:200, band:true},
+    release:{name:'歪みを抑えて',       goal:0.5,  center:0.75, half:1.25, floor:0,      reward:200, rel:250},
     muri:   {name:'無茶振り：もっと音圧を！', goal:3.2, center:0.6, half:0.9, floor:-0.8, reward:300, noriCap:30}
   };
   var MOOD = { start:60, bonus:5, ok:70, retake:40 };
@@ -853,7 +853,7 @@
     var pctOf = function(t){ return Math.round(t / Math.max(r.span, 0.001) * 100); };
     var limit = r.span * 0.12, worst = Math.max(r.under, r.over, r.short, r.noriHigh), advice;
     if (level === 3) advice = "音圧と山を両立し、見せ場の課題も決めました。文句なしの納品です。";
-    else if (worst > limit && worst === r.noriHigh) advice = "海苔が65以上（ボーナス停止）の時間が " + pctOf(r.noriHigh) + "% ありました。枠の右側で攻め続けると海苔がたまります。ときどき左上へ逃がし、RELEASEを緑の範囲に合わせるとたまりにくくなります。";
+    else if (worst > limit && worst === r.noriHigh) advice = "海苔が65以上（ボーナス停止）の時間が " + pctOf(r.noriHigh) + "% ありました。枠の右側で攻め続けると海苔がたまります。ときどき左上へ逃がし、RELEASEを長めにすると歪みが減ってたまりにくくなります。";
     else if (worst > limit && worst === r.under) advice = "点が緑の枠より左（音圧不足）にいた時間が " + pctOf(r.under) + "% ありました。不足中は通常点が入りません。GAINを上げて右へ。";
     else if (worst > limit && worst === r.over) advice = "点が緑の枠より右（音圧過多）にいた時間が " + pctOf(r.over) + "% ありました。上げ過ぎは加点が減り、海苔にも近づきます。GAINを下げて左へ。";
     else if (worst > limit) advice = "音圧は合っていても、山が枠の下限より低い時間が " + pctOf(r.short) + "% ありました。音圧を枠の左寄りに抑えて上へ（GAIN↓）。";
@@ -873,27 +873,6 @@
     demands.push({t:start+CHALLENGE.length,target:Math.round(base*10)/10});
   }
   // authored: optional hand-made list [{t:秒, type:'push'|'punch'|'quiet'|'release'|'muri'}, ...]
-  // Ideal release per second ≈ half the gap between hits (onsets), so gain reduction recovers before the
-  // next hit: dense parts want short release, sparse parts long. Clamped 60-350 ms, smoothed, 10 ms steps.
-  var RELBAND = { lo:0.75, hi:1.35, min:60, max:350 };
-  function analyseRelease(buf,duration){
-    var sr=buf.sampleRate, F=Math.round(sr/100), n=Math.floor(Math.min(buf.length,duration*sr)/F), ch=[], env=new Float32Array(n), mx=-200;
-    for(var c=0;c<buf.numberOfChannels;c++)ch.push(buf.getChannelData(c));
-    for(var f=0;f<n;f++){var sq=0,k=0;for(var i=f*F;i<(f+1)*F;i+=4){var v=0;for(var c2=0;c2<ch.length;c2++)v+=ch[c2][i]/ch.length;sq+=v*v;k++;}
-      env[f]=10*Math.log10(sq/k+1e-12);if(env[f]>mx)mx=env[f];}
-    var secs=Math.ceil(duration), cnt=new Array(secs).fill(0), last=-99;
-    for(var g=3;g<n;g++){var prev=Math.min(env[g-1],env[g-2],env[g-3]);
-      if(env[g]-prev>4&&env[g]>mx-30&&g-last>=5){last=g;var sI=Math.floor(g/100);if(sI<secs)cnt[sI]++;}}
-    var ideal=cnt.map(function(_,i){var s=0,k=0;for(var j=i-3;j<=i+3;j++)if(j>=0&&j<secs){s+=cnt[j];k++;}
-      var rate=s/Math.max(k,1);return Math.round(clamp(500/Math.max(rate,0.5),RELBAND.min,RELBAND.max)/10)*10;});
-    return ideal;
-  }
-  function relBandAt(chart,time){
-    var a=chart.relIdeal; if(!a||!a.length)return null;
-    var ideal=a[clamp(Math.floor(time),0,a.length-1)];
-    return {ideal:ideal, lo:Math.max(5,Math.round(ideal*RELBAND.lo/5)*5), hi:Math.min(400,Math.round(ideal*RELBAND.hi/5)*5)};
-  }
-  function inRelBand(ms,band){ return !band || (ms>=band.lo && ms<=band.hi); }
   function makeChart(buf,duration,authored){
     var analysis=analysePhrases(buf,duration), bins=analysis.bins, step=analysis.step;
     var missions=[], demands=[{t:0,target:-13}], previousType=null, repeat=0;
@@ -937,7 +916,7 @@
       picks.forEach(function(pk){addMission(missions,demands,pk.start,pk.type,duration);});
     }
     var missionMax=missions.reduce(function(s,m){return s+MISSIONS[m.type].reward*1.5;},0);
-    return {duration:duration,bins:bins,missions:missions,demands:demands,zone:null,relIdeal:analyseRelease(buf,duration),
+    return {duration:duration,bins:bins,missions:missions,demands:demands,zone:null,
       maxScore:duration*(32+CHALLENGE.precisionRate)+missionMax+100*MOOD.bonus};
   }
 
@@ -1079,7 +1058,7 @@
       var d=MISSIONS[m.type];
       r.mLo=m.center-m.half;r.mHi=m.center+m.half;
       r.mFloor=d.floor==='punch'?seriesAt(z.punch,time):r.floor+d.floor;
-      r.needRel=d.rel||0;r.noriCap=d.noriCap||0;r.needBand=!!d.band;
+      r.needRel=d.rel||0;r.noriCap=d.noriCap||0;
     }
     return r;
   }
@@ -1101,7 +1080,8 @@
     this.lastResult={name:m.name,type:m.type,success:success,reward:reward,hits:this.hits,until:m.end+2};
     this.results.push(this.lastResult);this.index++;this.hits=0;
   };
-  PerformanceRun.prototype.tick=function(dt,lufs,crest,nori,rel){
+  PerformanceRun.prototype.tick=function(dt,lufs,crest,nori,rel,pump){
+    pump=pump||0;
     var end=Math.min(this.time+dt,this.chart.duration);
     while(this.time<end-1e-10){
       var m=this.chart.missions[this.index];
@@ -1121,16 +1101,16 @@
       }
       // y: at or above the floor is full marks; sinking below fades out over 2.5 dB.
       var yF=!hasC?0:(crest>=floor?1:clamp(1-(floor-crest)/2.5,0,1));
-      this.base+=length*32*xF*yF*(1-clamp(nori,0,100)/220);
+      this.base+=length*32*xF*yF*(1-clamp(nori,0,100)/220)*(1-PUMP.score*pump);   // うねりは通常点を最大25%減らす
       var precise=hasL && hasC && lufs>=z.lo && lufs<=z.hi && crest>=floor && nori<65;
       var onTask=z.mission && precise && lufs>=z.mLo-1e-8 && lufs<=z.mHi+1e-8 && !(crest<z.mFloor)
-        && !(z.needRel && !(rel>=z.needRel)) && !(z.noriCap && nori>=z.noriCap)
-        && !(z.needBand && !inRelBand(rel,relBandAt(this.chart,this.time+length/2)));
+        && !(z.needRel && !(rel>=z.needRel)) && !(z.noriCap && nori>=z.noriCap);
       if(onTask)this.hits+=length;
       // Client mood drifts with what they hear: steady work pleases, nori and wrong levels annoy.
       var dm=precise?0.4:0;
       if(nori>=65)dm-=2;
       if(hasL&&lufs>z.hi+1)dm-=0.6;else if(hasL&&lufs<z.lo-1)dm-=0.4;
+      dm-=PUMP.mood*pump;                                    // うねりは依頼主の耳に障る
       this.mood=clamp(this.mood+dm*length,0,100);
       if(precise){
         var old=this.hold;this.hold+=length;this.miss=0;this.precisionTime+=length;
@@ -1158,7 +1138,6 @@
     var b=[];
     if(!z.mission)return b;
     if(z.needRel && !(parseFloat(relEl.value)>=z.needRel)) b.push('RELEASE '+z.needRel+'ms以上');
-    if(z.needBand && !inRelBand(parseFloat(relEl.value),relBandAt(gameChart,run.time))) b.push('RELEASEを緑の範囲へ');
     if(nori>=65) b.push('海苔65未満');
     else if(z.noriCap && nori>=z.noriCap) b.push('海苔'+z.noriCap+'未満');
     return b;
@@ -1168,11 +1147,11 @@
     if(t==='push')return '右へ：'+band;
     if(t==='muri')return 'もっと右へ：'+band+'（海苔'+z.noriCap+'未満）';
     if(t==='quiet')return '左へ：'+band;
-    if(t==='release')return 'RELEASEを緑の範囲に入れて枠キープ';
+    if(t==='release')return 'RELEASE '+z.needRel+'ms以上で枠キープ';
     return '上へ：山 '+(Number.isFinite(z.mFloor)?z.mFloor.toFixed(1):'—')+' dB 以上';
   }
   var PREP = { push:'GAINを上げる準備を', punch:'GAINを控えめにして音圧を枠の左寄りへ', quiet:'静かな所で音圧を追いかけない',
-    release:'RELEASEを緑の範囲へ', muri:'GAINを大きく上げ、RELEASEを緑の範囲にして海苔を抑える' };
+    release:'RELEASEを250ms以上へ', muri:'GAINを大きく上げ、RELEASEを長めにして海苔を抑える' };
   function renderPerformance(lufs,crest){
     if(!run)return;
     var z=zoneAt(gameChart,run.time,run.index), m=gameChart.missions[run.index];
@@ -1203,9 +1182,8 @@
     // RELEASE fader: highlight and mark the required value during the preview and the live challenge.
     var relZ=z.mission?z:(state==='preview'?zoneAt(gameChart,m.start+1e-3,run.index):null), needRel=relZ&&relZ.needRel||0;
     var relFader=relEl.closest('.fader');
-    var needBand=!!(relZ&&relZ.needBand), bandNow=relBandAt(gameChart,run.time);
-    relFader.classList.toggle('need',!!needRel||needBand);
-    relFader.classList.toggle('ok',(!!needRel&&parseFloat(relEl.value)>=needRel)||(needBand&&inRelBand(parseFloat(relEl.value),bandNow)));
+    relFader.classList.toggle('need',!!needRel);
+    relFader.classList.toggle('ok',!!needRel&&parseFloat(relEl.value)>=needRel);
     $('relNeed').hidden=!needRel;
     if(needRel){$('relNeed').style.left=((needRel-5)/395*100)+'%';putText('relNeedLab',needRel+'ms↑');}
     $('stabilityTrack').hidden=state==='preview';
@@ -1229,17 +1207,10 @@
       else if(Number.isFinite(floor)&&Number.isFinite(crest)&&crest<floor)hint='山不足：GAIN↓で上へ';
       else hint=run.rate>=23.99?'いい調子！':'ボーナス充電中';
     }
+    if(pumpSev>0 && !/海苔/.test(hint)) hint='うねり大：GAIN↓か、RELEASEを中くらいから外す';
     putText('precisionHint',hint);putText('precisionRate','+'+Math.floor(run.rate)+'点/秒');
     putText('precisionRange','枠 '+rangeText(z.cx,z.hx)+(Number.isFinite(z.floor)?' × 山 '+z.floor.toFixed(1)+' dB↑':''));
     $('precisionCharge').style.width=Math.min(1,run.hold/CHALLENGE.charge)*100+'%';
-    var band=relBandAt(gameChart,run.time), rv=parseFloat(relEl.value), ok=inRelBand(rv,band);
-    if(band){
-      $('relBand').hidden=false;
-      $('relBand').style.left=((band.lo-5)/395*100)+'%';$('relBand').style.width=((band.hi-band.lo)/395*100)+'%';
-      putText('relBandLab','適正 '+band.lo+'〜'+band.hi+'ms');
-      $('relBandLab').classList.toggle('off',!ok);relEl.parentNode.classList.toggle('off',!ok);
-      if(!ok && noriRate>0.05 && hint!=='海苔を65未満へ：上へ戻そう'){hint=rv<band.lo?'RELEASE短すぎ（歪み）：緑の範囲へ':'RELEASE長すぎ（ポンピング）：緑の範囲へ';putText('precisionHint',hint);}
-    }
   }
 
   /* ----- radar drawing ----- */
@@ -1250,6 +1221,7 @@
     var yLo=fl.length?Math.min.apply(null,fl)-2:2, yHi=fl.length?Math.max.apply(null,fl)+3:16;
     return {x0:Math.min.apply(null,ts)-3.5,x1:Math.max.apply(null,ts)+4.5,y0:Math.max(0,yLo),y1:Math.max(yHi,yLo+6)};
   }
+  function placePumpThr(){ $("pumpThr").style.left=(PUMP.thr/PUMP.scale*100)+"%"; }
   function resizeXY(){
     if(!xyCvs)return;
     var r=xyCvs.getBoundingClientRect();if(!r.width)return;
@@ -1362,7 +1334,7 @@
   var LINES = {
     // 課題の位置は音量の変化から自動で決めるため、サビ・ブレイクなど曲の構成を断定する言い方はしない。
     preview:{ push:"次のところ、グッと音圧を上げてほしいです！", punch:"次は音の山（アタック）を残したいな", quiet:"次の静かなパートは、静かなまま聴かせたいです",
-      release:"ここ、リリースを曲のノリに合わせてほしいです" },
+      release:"ここ、歪みが気になるのでリリース長めで" },
     success:["いいね！その感じ！","完璧です！","おお、分かってますね〜","そうそう、それです！"],
     muriSuccess:"すごい、あの音圧で潰れてない…！",
     fail:["うーん、ちょっと違うかな…","もう少し粘ってほしかったです","次はお願いしますよ？"],
@@ -1397,6 +1369,8 @@
     this.underT=Number.isFinite(lufs)&&lufs<z.lo&&t>6?this.underT+dt:0;
     if(this.overT>4){this.overT=0;this.say(t,LINES.over);return;}
     if(this.underT>6){this.underT=0;this.say(t,LINES.under);return;}
+    this.pumpT=pumpSev>0.3?(this.pumpT||0)+dt:0;
+    if(this.pumpT>3&&t-(f.pumpAt||-99)>20){f.pumpAt=t;this.pumpT=0;this.say(t,"なんか音がうねってません？");return;}
     if(run.mood<35&&!f.low){f.low=true;this.say(t,LINES.moodLow);return;}
     if(run.mood>50)f.low=false;
     if(run.hold>12&&t-(f.happyAt||-99)>30){f.happyAt=t;this.say(t,LINES.happy);return;}
@@ -1557,15 +1531,7 @@
   // distorts, so nori builds faster; long release is clean (builds slower) but needs more GAIN for the same loudness.
   // (Measured: at equal loudness the 1 s crest is the same for any release, so release cannot "lift the peaks".)
   var REL = { ref:120, slope:0.3, min:0.6, max:1.6 };
-  // Variant: inside the band nori builds slowest; shorter = distortion, longer = pumping, both build faster.
-  var curRelBand=null;
-  function releaseFactor(ms){
-    var b=curRelBand; if(!b) return 1;
-    var d=Math.log2(Math.max(ms,1)/b.ideal), dl=Math.log2(RELBAND.lo), dh=Math.log2(RELBAND.hi);
-    if(d<dl) return Math.min(1.8,0.7+0.5*(dl-d));     // 短すぎ：歪み
-    if(d>dh) return Math.min(1.6,0.7+0.45*(d-dh));    // 長すぎ：ポンピング
-    return 0.7;
-  }
+  function releaseFactor(ms){ return clamp(1 - REL.slope*Math.log2(Math.max(ms,1)/REL.ref), REL.min, REL.max); }
   function noriRateFor(headroom){
     if(headroom<=0) return NORI.sinkMin+(NORI.sinkMax-NORI.sinkMin)*Math.min(1,-headroom/NORI.sinkSpan);
     if(headroom<NORI.neutral) return NORI.build*(1-headroom/NORI.neutral);
@@ -1585,7 +1551,7 @@
   function showObserver(m){lastShape=m;nori=shapeHeat(m,nori);
     var sunk=m.headroom<=0, building=noriRate>0.05;
     putText('shapeStatus',sunk?'海苔ゾーンに沈んでいます':building?'海苔がたまっています':nori>1?'海苔を回復中':'波形は保たれています');
-    putText('shapeHint',sunk?'GAIN↓で上へ戻そう':building?(curRelBand&&!inRelBand(parseFloat(relEl.value),curRelBand)?'RELEASEが緑の範囲外：合わせるとたまりにくい':'上へ余裕を作ると回復'):'山を残せています');
+    putText('shapeHint',sunk?'GAIN↓で上へ戻そう':building?(parseFloat(relEl.value)<REL.ref?'RELEASEが短く歪みやすい：長めにするとたまりにくい':'上へ余裕を作ると回復'):'山を残せています');
   }
   function resetObserver(){lastShape=null;noriRate=0;if(liveObserver)liveObserver.reset();putText('shapeStatus','開始後に波形を判定');putText('shapeHint','GAINで音圧、RELEASEで歪み（海苔のたまり方）を調整');}
   async function prepareObserver(){if(observerReady)return observerReady;observerReady=(async function(){
@@ -2021,11 +1987,11 @@
     run = new PerformanceRun(gameChart);
     director = new ClientDirector(CLIENTS[isDemo ? "demo" : activeKey] || CLIENTS.demo);
     putText("clientWho", director.p.who); renderMood();
-    fx = new Fx(); fxClear();
+    fx = new Fx(); fxClear(); placePumpThr();
     DEMANDS = gameChart.demands;
     demandIdx = 0; target = DEMANDS[0].target;
     lufsRing = []; lufsSum = 0; lufsDuration = 0; crest1s = NaN; crestRing = []; crestDur = 0; peakHold = 0; peakHoldT = 0;
-    xyTrail = []; trailT = 0; xyRange = radarRange(gameChart); curZone = zoneAt(gameChart, 0, 0); xyDirty = true;
+    xyTrail = []; trailT = 0; grRing = []; grDur = 0; pump1s = 0; pumpSev = 0; xyRange = radarRange(gameChart); curZone = zoneAt(gameChart, 0, 0); xyDirty = true;
     sumSq = 0; sumN = 0; crestAcc = 0; crestT = 0;
     bubble.hidden = true; bubbleTimer = 0;
     for (var i = 0; i < hist.length; i++) hist[i] = blankCol();
@@ -2194,10 +2160,10 @@
     noriMax = Math.max(noriMax, nori);
     if (nori >= 65) noriHighTime += dt;
 
-    run.tick(dt,lufs,crest1s,nori,parseFloat(relEl.value));
+    updatePump(dt);
+    run.tick(dt,lufs,crest1s,nori,parseFloat(relEl.value),pumpSev);
     score=run.total();
     curZone=zoneAt(gameChart,run.time,run.index);
-    curRelBand=relBandAt(gameChart,run.time);
     trailT+=dt;
     if(trailT>=0.1&&isFinite(lufs)&&isFinite(crest1s)){trailT=0;xyTrail.push({L:lufs,c:crest1s});if(xyTrail.length>24)xyTrail.shift();}
     xyDirty=true;
@@ -2233,6 +2199,23 @@
     else if (elapsed >= session) finish(false);
   }
 
+  // Pumping, measured: how much the limiter's gain reduction moves within the last second (std, dB).
+  // Offline checks on the real tracks: it grows with how hard the limiter works and peaks around 100-200 ms
+  // release when pushed (short release distorts instead, long release just turns the mix down).
+  var PUMP = { thr:0.9, span:0.6, mood:1.5, score:0.25, scale:2.5 };
+  var grRing=[], grDur=0, pump1s=0, pumpSev=0;
+  function updatePump(dt){
+    var rv=lim?lim.reduction:0, gr=Math.max(0,-(typeof rv==="number"?rv:(rv&&rv.value)||0));
+    grRing.push({gr:gr,dt:dt});grDur+=dt;
+    while(grDur>1+1e-9&&grRing.length>1)grDur-=grRing.shift().dt;
+    var s=0,s2=0,w=0;for(var i=0;i<grRing.length;i++){var e=grRing[i];s+=e.gr*e.dt;s2+=e.gr*e.gr*e.dt;w+=e.dt;}
+    var mu=s/Math.max(w,1e-9), sd=Math.sqrt(Math.max(0,s2/Math.max(w,1e-9)-mu*mu));
+    pump1s+=(sd-pump1s)*(1-Math.exp(-dt*3));          // ~0.3 s smoothing for a readable meter
+    pumpSev=clamp((pump1s-PUMP.thr)/PUMP.span,0,1);
+    $("fPump").style.width=clamp(pump1s/PUMP.scale,0,1)*100+"%";
+    putText("vPump",pump1s.toFixed(2)+" dB");
+    $("fPump").parentNode.parentNode.classList.toggle("over",pumpSev>0);
+  }
   function statCell(label, value, cls){
     return '<div><dt>' + label + '</dt><dd' + (cls ? ' class="' + cls + '"' : '') + '>' + value + '</dd></div>';
   }
@@ -2277,7 +2260,7 @@
     if (failed){
       $("overStats").innerHTML = cells;
       $("overMsg").textContent =
-        "波形の山(クレスト)が潰れた状態が続き、海苔が振り切れました。GAINを下げて山を戻すと回復し、RELEASEを緑の範囲に合わせると海苔がたまりにくくなります。";
+        "波形の山(クレスト)が潰れた状態が続き、海苔が振り切れました。GAINを下げて山を戻すと回復し、RELEASEを長めにすると歪みが減って海苔がたまりにくくなります。";
       setScreen(scrOver);
       return;
     }
