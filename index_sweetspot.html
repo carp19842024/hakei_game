@@ -1,0 +1,2397 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  :root{
+    color-scheme:light;
+    padding-top:env(safe-area-inset-top, 0px);
+    padding-bottom:env(safe-area-inset-bottom, 0px);
+  }
+  html,body{min-height:100%}
+  body{margin:0;font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+.shape-feedback{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:12px;font:12px/1.5 system-ui;color:#314637}.shape-feedback span{flex-basis:100%;font-size:11px}.shape-feedback b{font-weight:600}
+</style>
+<title>音圧の達人～波形をコントロールせよ～（RELEASE比較版）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --desk:#16130f;
+    --desk-2:#221d17;
+    --panel:#c7c0af;
+    --panel-hi:#d6d0c1;
+    --panel-lo:#aca595;
+    --edge:#7d7767;
+    --ink:#201d18;
+    --ink-soft:rgba(32,29,24,.62);
+    --scope:#0b0f0c;
+    --amber:#f2a63b;
+    --red:#cc3b2a;
+    --teal:#5fa8a0;
+    --lamp:#8fe06a;
+
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --cond:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+    --jp:"Noto Sans JP","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  }
+
+  *{box-sizing:border-box}
+
+  body{
+    margin:0;
+    background:
+      radial-gradient(120% 90% at 50% -10%, #2a241c 0%, var(--desk-2) 42%, var(--desk) 100%);
+    background-attachment:fixed;
+    color:var(--panel);
+    font-family:var(--jp);
+    padding:0 16px;
+    padding-block:22px 34px;
+    min-height:100%;
+  }
+
+  .wrap{max-width:1020px;margin:0 auto}
+
+  /* ---------- the rack unit ---------- */
+  .unit{
+    position:relative;
+    background:linear-gradient(176deg,var(--panel-hi) 0%,var(--panel) 38%,var(--panel-lo) 100%);
+    border-radius:7px;
+    border:1px solid var(--edge);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.55),
+      inset 0 -2px 6px rgba(0,0,0,.22),
+      0 24px 48px -18px rgba(0,0,0,.85),
+      0 2px 0 rgba(0,0,0,.4);
+    padding:18px 22px 20px;
+    overflow:hidden;
+  }
+  .unit::after{ /* brushed metal */
+    content:"";position:absolute;inset:0;pointer-events:none;border-radius:7px;
+    background:repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 1px,rgba(0,0,0,.02) 1px 3px);
+    mix-blend-mode:overlay;
+  }
+  .screw{
+    position:absolute;width:13px;height:13px;border-radius:50%;
+    background:radial-gradient(circle at 34% 30%,#9a9384,#4e493f 62%,#2c2823);
+    box-shadow:inset 0 1px 1px rgba(255,255,255,.4),0 1px 2px rgba(0,0,0,.45);
+  }
+  .screw::before{
+    content:"";position:absolute;inset:0;margin:auto;width:8px;height:1.6px;
+    background:#1c1915;transform:rotate(34deg);border-radius:1px;
+  }
+  .screw.tl{top:10px;left:8px}.screw.tr{top:10px;right:8px}
+  .screw.bl{bottom:10px;left:8px}.screw.br{bottom:10px;right:8px}
+
+  /* ---------- head ---------- */
+  .head{
+    display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;
+    padding:0 8px 13px;margin-bottom:14px;
+    border-bottom:1px solid rgba(32,29,24,.22);
+    box-shadow:0 1px 0 rgba(255,255,255,.4);
+    position:relative;z-index:1;
+  }
+  .brand{
+    font-family:var(--cond);font-weight:700;font-size:27px;line-height:1;
+    letter-spacing:.06em;color:var(--ink);text-transform:uppercase;
+    display:flex;align-items:center;gap:10px;
+  }
+  .brand em{
+    font-style:normal;font-weight:500;font-size:16px;letter-spacing:.3em;
+    color:var(--ink-soft);padding-left:2px;
+  }
+  .lamp{
+    width:11px;height:11px;border-radius:50%;background:#3d5c33;
+    box-shadow:inset 0 0 3px rgba(0,0,0,.7);flex:none;
+  }
+  .lamp.on{background:var(--lamp);box-shadow:0 0 9px rgba(143,224,106,.85),inset 0 0 3px rgba(255,255,255,.6)}
+  .head-sub{
+    font-family:var(--cond);font-size:13px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--ink-soft);margin-left:auto;
+  }
+
+  /* ---------- scope ---------- */
+  .scope{
+    position:relative;
+    background:var(--scope);
+    border-radius:4px;
+    aspect-ratio:2.45;
+    min-height:190px;
+    border:1px solid #060806;
+    box-shadow:
+      inset 0 3px 12px rgba(0,0,0,.95),
+      inset 0 0 44px rgba(20,60,34,.28),
+      0 1px 0 rgba(255,255,255,.45);
+    overflow:hidden;
+    z-index:1;
+  }
+  .scope canvas{display:block;width:100%;height:100%}
+  .scope::after{ /* glass */
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:
+      linear-gradient(190deg,rgba(255,255,255,.07),rgba(255,255,255,0) 34%),
+      radial-gradient(130% 100% at 50% 50%,rgba(0,0,0,0) 52%,rgba(0,0,0,.6) 100%);
+  }
+
+  .hud{
+    position:absolute;top:0;left:0;right:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;
+    gap:4px 10px;padding:9px 12px;font-family:var(--mono);font-size:11.5px;
+    letter-spacing:.06em;color:rgba(190,206,192,.72);pointer-events:none;
+  }
+  .hud__target,#hudTime{white-space:nowrap}
+  .hud .warn{grid-column:1 / -1;white-space:nowrap}
+  .hud b{color:var(--teal);font-weight:600}
+  .hud .warn{color:var(--red)}
+
+  .bubble{
+    position:absolute;right:12px;bottom:12px;max-width:min(62%,330px);
+    background:#efe9da;color:#1b1813;border-radius:9px 9px 2px 9px;
+    padding:9px 13px;font-size:13px;line-height:1.5;font-weight:500;
+    box-shadow:0 8px 20px -6px rgba(0,0,0,.8);
+    border:1px solid #b9b19f;
+    word-break:auto-phrase;line-break:strict;text-wrap:pretty;
+  }
+  .bubble span{
+    display:block;font-family:var(--cond);font-size:11px;letter-spacing:.2em;
+    text-transform:uppercase;color:#8a8273;margin-bottom:2px;
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .bubble{animation:pop .28s cubic-bezier(.2,1.5,.4,1)}
+    @keyframes pop{from{transform:translateY(8px) scale(.94);opacity:0}to{transform:none;opacity:1}}
+  }
+
+  /* ---------- overlay screens ---------- */
+  .screen{
+    position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-start;
+    gap:14px;padding:22px clamp(16px,4vw,38px);
+    background:linear-gradient(180deg,rgba(6,10,7,.84),rgba(6,10,7,.93));
+    backdrop-filter:blur(2px);overflow-y:auto;
+  }
+  /* 収まる時は中央寄せ・あふれる時は上端から表示してスクロール可能に(上部見切れ防止) */
+  .screen > :first-child{margin-top:auto}
+  .screen > :last-child{margin-bottom:auto}
+  .screen h2{
+    margin:0;font-family:var(--cond);font-size:clamp(24px,5vw,38px);font-weight:700;
+    letter-spacing:.05em;color:#e8e2d3;text-wrap:balance;line-height:1.05;
+  }
+  .screen h2 small{display:block;font-size:13px;letter-spacing:.24em;color:var(--teal);font-weight:600;margin-bottom:6px}
+  .screen p{margin:0;font-size:13.5px;line-height:1.75;color:#b7bfb6;word-break:auto-phrase;line-break:strict;text-wrap:pretty}
+  .screen ol{margin:0;padding-left:1.25em;font-size:13px;line-height:1.85;color:#b7bfb6;word-break:auto-phrase;line-break:strict;text-wrap:pretty}
+  .screen ol b{color:var(--amber);font-weight:700}
+  .screen .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+
+  /* ---------- track selector ---------- */
+  .tracksel{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+  .tracksel__lab{
+    display:inline-flex;align-items:center;gap:9px;
+    font-family:var(--jp);font-weight:700;font-size:16px;letter-spacing:.12em;
+    color:#ffd489;
+  }
+  .tracksel__lab::before{
+    content:"";width:4px;height:17px;background:var(--amber);border-radius:1px;
+    box-shadow:0 0 8px rgba(242,166,59,.6);
+  }
+  .tracksel__list{display:flex;flex-wrap:wrap;gap:8px}
+  .howto{display:flex;flex-direction:column;gap:8px}
+  .howto__lab{
+    display:inline-flex;align-items:center;gap:9px;
+    font-family:var(--jp);font-weight:700;font-size:14px;letter-spacing:.12em;color:#a9b3a7;
+  }
+  .howto__lab::before{content:"";width:4px;height:15px;background:rgba(150,170,155,.5);border-radius:1px}
+  .howto ol{margin:0}
+  .trk{
+    position:relative;display:inline-flex;flex-direction:column;gap:2px;
+    min-width:215px;
+    padding:7px 13px;border:1px solid rgba(150,170,155,.3);border-radius:4px;
+    background:rgba(12,18,14,.5);cursor:pointer;transition:border-color .15s,background-color .15s;
+  }
+  .trk input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+  .trk__name{font-size:13px;font-weight:500;color:#cdd5cb;white-space:nowrap}
+  .trk__meta{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .trk__gen{font-family:var(--cond);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#7d8c80}
+  .trk:hover{border-color:rgba(150,170,155,.55)}
+  .trk:has(input:checked){border-color:var(--amber);background:rgba(242,166,59,.12)}
+  .trk:has(input:checked) .trk__name{color:#ffe0ad}
+  .trk:focus-within{outline:2px solid var(--amber);outline-offset:2px}
+
+  /* ---------- loading progress (start screen) ---------- */
+  #scrStart .src{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.5;color:#b7bfb6}   /* 長い案内も切らずに折り返し、暗い背景で読める色に */
+  .loadprog{width:100%;max-width:560px;display:flex;flex-direction:column;gap:6px}
+  .loadprog__steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+  .loadprog__steps span{font-family:var(--cond);font-size:11px;letter-spacing:.08em;color:#6f7d72;text-align:center;white-space:nowrap;
+    padding:3px 0;border-radius:3px;background:rgba(150,170,155,.08);transition:color .2s,background-color .2s}
+  .loadprog__steps span.done{color:#0f1a12;background:#92da89}
+  .loadprog__steps span.now{color:#ffd489;background:rgba(242,166,59,.18)}
+  .loadprog__bar{position:relative;height:10px;border-radius:5px;background:#1d2721;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.8)}
+  .loadprog__bar i{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,#5fa8a0,#92da89);transition:width .35s ease-out}
+  .loadprog__bar i::after{content:"";position:absolute;inset:0;
+    background:repeating-linear-gradient(115deg,rgba(255,255,255,.22) 0 8px,transparent 8px 16px);background-size:32px 100%;animation:loadstripe .8s linear infinite}
+  .loadprog.ready .loadprog__bar i::after{animation:none;background:none}
+  @keyframes loadstripe{to{background-position:32px 0}}
+  .loadprog__meta{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#b7bfb6}
+  .loadprog__meta b{font-family:var(--mono);font-weight:600;color:#e4dccb}
+  .loadprog.ready .loadprog__meta b{color:var(--lamp)}
+  @media (prefers-reduced-motion:reduce){.loadprog__bar i::after{animation:none}}
+  @media (max-width:720px){
+    .loadprog{max-width:none;gap:5px}
+    .loadprog__steps span{font-size:9.5px;letter-spacing:.02em;padding:2px 0}
+    .loadprog__bar{height:8px}
+    .loadprog__meta{font-size:11px}
+  }
+  @media (max-width:380px){ .loadprog__steps{display:none} }   /* 極小画面はバーと文字だけ */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:1px;background:rgba(150,170,155,.16);border:1px solid rgba(150,170,155,.16)}
+  .stats div{background:#0c1210;padding:9px 11px}
+  .stats dt{font-family:var(--cond);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#7d8c80;margin:0 0 3px}
+  .stats dd{margin:0;font-family:var(--mono);font-size:19px;font-weight:600;color:#e4dccb;font-variant-numeric:tabular-nums}
+  .stats dd.bad{color:var(--red)}
+  .stats dd.good{color:var(--lamp)}
+
+  .rank{font-family:var(--cond);font-size:clamp(28px,6vw,44px);font-weight:700;letter-spacing:.04em;color:var(--amber);line-height:1}
+
+  /* ---------- meters ---------- */
+  .meters{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+    margin-top:14px;background:rgba(32,29,24,.28);
+    border:1px solid rgba(32,29,24,.28);position:relative;z-index:1;
+  }
+  .m{background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(0,0,0,.05));padding:8px 11px 10px}
+  .m__lab{
+    font-family:var(--cond);font-size:11px;letter-spacing:.17em;text-transform:uppercase;
+    color:var(--ink-soft);display:flex;justify-content:space-between;gap:6px;margin-bottom:6px;
+  }
+  .m__val{font-family:var(--mono);font-size:17px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.1}
+  .m__val small{font-size:10px;font-weight:400;color:var(--ink-soft);margin-left:3px}
+  .m__bar{
+    position:relative;height:16px;margin-top:7px;border-radius:3px;
+    background:#2b2721;box-shadow:inset 0 1px 3px rgba(0,0,0,.8),0 1px 0 rgba(255,255,255,.45);
+    overflow:hidden;
+  }
+  .m__fill{position:absolute;inset:0 100% 0 0;background:linear-gradient(90deg,var(--teal),#8fd0a2);transition:right .06s linear}
+  .m__fill.crest{background:linear-gradient(90deg,#c98a3a,var(--amber))}
+  .m__fill.nori{background:linear-gradient(90deg,#1f4a2f,#2f7a4b)}
+  .target-band{position:absolute;top:0;bottom:0;background:rgba(143,224,106,.32);border:2px solid #b9ff9b;pointer-events:none}
+  .guide{position:relative;z-index:1;color:var(--ink);margin:10px 0 0;text-align:center;font-size:13px}
+  .btn:disabled{opacity:.55;cursor:wait}
+  .m__mark{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--red);box-shadow:0 0 4px rgba(204,59,42,.9)}
+  .m.over .m__val{color:var(--red)}
+  /* ---------- feedback: popups, combo, nori fog, GR ---------- */
+  .nori-fog{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .4s;
+    background:radial-gradient(120% 90% at 50% 60%,rgba(22,48,31,.35),rgba(22,48,31,.92) 70%),
+      repeating-linear-gradient(115deg,rgba(63,122,85,.18) 0 2px,transparent 2px 9px)}
+  .pop{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);pointer-events:none;white-space:nowrap;
+    font-family:var(--cond);font-weight:700;font-size:clamp(26px,6vw,46px);letter-spacing:.06em;color:#ffe1a0;
+    text-shadow:0 0 18px rgba(242,166,59,.8),0 2px 0 rgba(0,0,0,.6);opacity:0}
+  .pop small{display:block;text-align:center;font-size:.42em;letter-spacing:.2em;color:#e8e2d3}
+  .pop.good{color:#b9ff9b;text-shadow:0 0 18px rgba(143,224,106,.8),0 2px 0 rgba(0,0,0,.6)}
+  .pop.bad{color:#ff8a78;text-shadow:0 0 18px rgba(204,59,42,.8),0 2px 0 rgba(0,0,0,.6)}
+  .pop.show{animation:popin 1.3s ease-out forwards}
+  @keyframes popin{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}
+    22%{transform:translate(-50%,-50%) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-80%) scale(1)}}
+  .combo{position:absolute;left:12px;top:30px;font-family:var(--cond);font-weight:700;font-size:15px;letter-spacing:.1em;
+    color:#b9ff9b;text-shadow:0 0 10px rgba(143,224,106,.7);pointer-events:none;opacity:0;transition:opacity .25s}
+  .combo.on{opacity:1}
+  .combo b{font-size:24px;font-family:var(--mono)}
+  .scope.flash{box-shadow:inset 0 0 0 3px var(--amber),inset 0 0 40px rgba(242,166,59,.5)}
+  .score.bump b{animation:bump .45s ease-out}
+  @keyframes bump{0%{transform:scale(1)}30%{transform:scale(1.25);color:#ffe1a0}100%{transform:scale(1)}}
+  .m.danger{animation:danger .6s ease-in-out infinite alternate}
+  @keyframes danger{from{box-shadow:inset 0 0 0 2px rgba(204,59,42,.2)}to{box-shadow:inset 0 0 0 2px rgba(204,59,42,.95)}}
+  .gr{display:flex;align-items:center;gap:8px;margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--ink-soft)}
+  .gr__bar{position:relative;flex:1;height:7px;border-radius:3px;background:#2b2721;box-shadow:inset 0 1px 3px rgba(0,0,0,.8);overflow:hidden}
+  .gr__bar i{position:absolute;top:0;bottom:0;right:0;width:0;background:linear-gradient(90deg,#cc3b2a,#f2a63b)}
+  #vGR{min-width:6.5em;text-align:right;color:var(--ink);font-weight:600}
+  .se-toggle{margin-left:12px;font-family:var(--cond);font-size:12px;letter-spacing:.14em;padding:3px 9px;border-radius:3px;
+    border:1px solid rgba(32,29,24,.4);background:rgba(255,255,255,.25);color:var(--ink);cursor:pointer}
+  .se-toggle[aria-pressed="false"]{opacity:.55}
+  @media (prefers-reduced-motion:reduce){.pop.show{animation-duration:.01s}.m.danger{animation:none;box-shadow:inset 0 0 0 2px var(--red)}}
+  .challenge-progress.blocked i{background:#8a8a8a}
+  .exp-badge{margin-left:12px;font-size:11px;font-weight:700;color:#7a4a10;background:rgba(242,166,59,.35);border:1px solid rgba(122,74,16,.4);border-radius:3px;padding:1px 7px;white-space:nowrap}
+  .head-sub + .exp-badge{margin-left:12px}
+  .rel-wrap{position:relative}
+  .rel-wrap input{position:relative;z-index:2}
+  .band-rail{position:absolute;left:12px;right:12px;top:50%;height:0;z-index:1}
+  .band-rail i{position:absolute;top:6px;height:5px;border-radius:2px;background:#5ea644;box-shadow:0 0 6px rgba(94,166,68,.8);transition:left .4s,width .4s}
+  .rel-wrap.off .band-rail i{background:#cc8a2a;box-shadow:0 0 6px rgba(204,138,42,.8)}
+  #relBandLab{text-transform:none;letter-spacing:.02em;font-style:normal;font-family:var(--mono);font-size:10.5px;color:#3d6b2c;margin-left:6px;font-weight:600}
+  .rel-wrap.off ~ .ticks,#relBandLab.off{color:#b5651d}
+  @media (max-width:720px){.exp-badge{font-size:9.5px;padding:0 5px;margin-left:auto}.exp-long{display:none}.exp-badge + .se-toggle{margin-left:6px}}
+  .fader{position:relative}
+  .fader.need input[type=range]::-webkit-slider-runnable-track{box-shadow:inset 0 2px 4px rgba(0,0,0,.85),0 0 0 2px var(--amber)}
+  .fader.need input[type=range]::-moz-range-track{box-shadow:inset 0 2px 4px rgba(0,0,0,.85),0 0 0 2px var(--amber)}
+  .fader.need .fader__val{color:#b5651d}
+  .fader.need.ok input[type=range]::-webkit-slider-runnable-track{box-shadow:inset 0 2px 4px rgba(0,0,0,.85),0 0 0 2px #5ea644}
+  .fader.need.ok input[type=range]::-moz-range-track{box-shadow:inset 0 2px 4px rgba(0,0,0,.85),0 0 0 2px #5ea644}
+  .fader.need.ok .fader__val{color:#3d6b2c}
+  /* rail = the slider's travel (inset by half the 24px thumb), so a value maps to the same x as the thumb */
+  .need-rail{position:relative;height:0;margin:0 12px;z-index:1}
+  .need-mark{position:absolute;top:0;width:0;pointer-events:none}
+  /* rail sits on top of the slider: a tick down to the track, the tag above it in the header row's empty middle */
+  .need-mark::before{content:"";position:absolute;left:-1px;top:2px;width:2px;height:18px;background:var(--amber)}
+  .need-mark span{position:absolute;left:0;bottom:1px;transform:translateX(-50%);white-space:nowrap;font-family:var(--mono);font-size:10px;font-weight:600;
+    line-height:13px;color:#fff;background:var(--amber);border-radius:2px;padding:0 4px}
+  .fader.need.ok .need-mark span,.fader.need.ok .need-mark::before{background:#5ea644}
+  .m__mark.floor{background:#b9ff9b;box-shadow:0 0 4px rgba(143,224,106,.9)}
+
+  /* ---------- 2D radar: loudness (x) × crest (y) ---------- */
+  .xy{
+    position:absolute;top:30px;right:10px;width:min(38%,280px);aspect-ratio:1.3;
+    border-radius:4px;border:1px solid rgba(150,170,155,.35);
+    box-shadow:0 6px 16px -6px rgba(0,0,0,.9);pointer-events:none;
+  }
+  .xy canvas{display:block;width:100%;height:100%}
+
+  /* ---------- optional challenges and precision ---------- */
+  .mission-band{position:absolute;top:0;bottom:0;background:rgba(242,166,59,.7);border:2px solid #ffe1a0;pointer-events:none}
+  .performance{position:relative;z-index:1;margin-top:10px;padding:12px 14px;background:#111b16;color:#e4e8dc;border:1px solid #435347;border-radius:4px;font-size:12px}
+  .mission-head,.precision-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .client-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid #2c3a30}
+  .client-row b{font-size:12px;color:#cdd5cb;white-space:nowrap;font-weight:500}
+  #clientFace{font-size:18px;line-height:1}
+  .client-mood{flex:1;height:8px;background:#29382d;border-radius:2px;overflow:hidden;min-width:40px}
+  .client-mood i{display:block;height:100%;width:60%;background:var(--amber);transition:width .4s,background-color .4s}
+  #clientMood{font-family:var(--mono);font-size:11px;color:#b8c6b8;white-space:nowrap}
+  .mission-head b{font-size:14px;white-space:nowrap}
+  #missionTimer{font-family:var(--mono);font-size:11px;white-space:nowrap;color:#b8c6b8}
+  #missionDetail{margin:5px 0 7px;min-height:2.8em;line-height:1.4;white-space:pre-line;color:#c0cec1}
+  .challenge-progress,.precision-charge{height:8px;background:#29382d;border-radius:2px;overflow:hidden}
+  .challenge-progress i,.precision-charge i{display:block;height:100%;width:0;background:#92da89}
+  .precision-head{margin-top:9px;font-size:12px}
+  .precision-head b,#precisionRate{color:#ffd489}
+  #precisionRate{font-family:var(--mono);white-space:nowrap}
+  .precision-readout{display:flex;justify-content:space-between;flex-wrap:wrap;gap:2px 12px;margin:4px 0 6px;font-size:11px}
+  .precision-readout span{white-space:nowrap}
+  #precisionHint{color:#b8c6b8}
+  .precision-charge{height:12px;margin-top:6px}
+  .precision-charge i{background:#91d386;transition:width .35s linear}
+  .performance[data-state="preview"] .mission-head b{color:#ffcf83}
+  .performance[data-state="active"]{border-color:#d2a651}
+  .performance[data-state="success"] .mission-head b{color:#a2ed8e}
+  @media(max-width:720px){
+    .in-session .scope{aspect-ratio:1.8;min-height:160px}
+    .performance{padding:9px 10px;font-size:11px}
+    .mission-head b{font-size:12px}
+    #missionTimer{font-size:10px}
+    .precision-readout{display:grid;grid-template-columns:minmax(0,1fr);gap:2px}
+  }
+
+  /* ---------- controls ---------- */
+  .controls{
+    display:grid;grid-template-columns:1fr 1fr;gap:14px 24px;
+    margin-top:16px;padding:14px 12px 6px;position:relative;z-index:1;
+    border-top:1px solid rgba(32,29,24,.2);box-shadow:0 -1px 0 rgba(255,255,255,.4);
+  }
+  .fader__top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:9px}
+  .fader__name{font-family:var(--cond);font-size:14px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--ink)}
+  .fader__name i{font-style:normal;font-family:var(--jp);font-size:11px;letter-spacing:.04em;color:var(--ink-soft);margin-left:8px;font-weight:400}
+  .fader__val{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;background:transparent;margin:0;
+    height:30px;cursor:grab;display:block;
+  }
+  input[type=range]:active{cursor:grabbing}
+  input[type=range]::-webkit-slider-runnable-track{
+    height:9px;border-radius:5px;
+    background:linear-gradient(180deg,#221f1a,#3b362e);
+    box-shadow:inset 0 2px 4px rgba(0,0,0,.85),0 1px 0 rgba(255,255,255,.5);
+  }
+  input[type=range]::-moz-range-track{
+    height:9px;border-radius:5px;
+    background:linear-gradient(180deg,#221f1a,#3b362e);
+    box-shadow:inset 0 2px 4px rgba(0,0,0,.85),0 1px 0 rgba(255,255,255,.5);
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:24px;height:30px;margin-top:-10.5px;
+    border-radius:3px;border:1px solid #100e0c;
+    background:linear-gradient(180deg,#4a443b 0%,#2a2620 46%,#171512 52%,#3a352d 100%);
+    box-shadow:0 2px 5px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:24px;height:30px;border-radius:3px;border:1px solid #100e0c;
+    background:linear-gradient(180deg,#4a443b 0%,#2a2620 46%,#171512 52%,#3a352d 100%);
+    box-shadow:0 2px 5px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  input[type=range]:focus-visible{outline:2px solid var(--red);outline-offset:4px;border-radius:5px}
+  .ticks{
+    display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;
+    color:var(--ink-soft);margin-top:-2px;letter-spacing:.02em;
+  }
+
+  /* ---------- transport ---------- */
+  .bay{
+    display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;
+    margin-top:14px;padding-top:14px;position:relative;z-index:1;
+    border-top:1px solid rgba(32,29,24,.2);box-shadow:0 -1px 0 rgba(255,255,255,.4);
+  }
+  .btn{
+    font-family:var(--cond);font-size:15px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+    color:#e6e0d1;background:linear-gradient(180deg,#39342c,#1e1b16);
+    border:1px solid #100e0c;border-radius:4px;padding:9px 18px;cursor:pointer;
+    box-shadow:0 2px 4px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.18);
+    position:relative;
+  }
+  .btn:hover{background:linear-gradient(180deg,#453f35,#26221c)}
+  .btn:active{transform:translateY(1px);box-shadow:0 1px 2px rgba(0,0,0,.5),inset 0 1px 3px rgba(0,0,0,.5)}
+  .btn:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+  .btn--go{color:#0f1a12;background:linear-gradient(180deg,#9ce07b,#5ea644);border-color:#3d6b2c;text-shadow:0 1px 0 rgba(255,255,255,.25)}
+  .btn--go:hover{background:linear-gradient(180deg,#aaeb8a,#68b34c)}
+  .src{
+    font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;flex:1 1 180px;
+  }
+  .score{
+    margin-left:auto;display:flex;align-items:baseline;gap:9px;
+    padding:4px 13px;border-radius:3px;background:#100e0c;
+    box-shadow:inset 0 2px 5px rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.45);
+  }
+  .score span{font-family:var(--cond);font-size:11px;letter-spacing:.24em;color:#6e6a5f}
+  .score b{font-family:var(--mono);font-size:22px;font-weight:600;color:var(--amber);font-variant-numeric:tabular-nums}
+
+  /* ---------- footer note ---------- */
+  .note{
+    margin:18px auto 0;max-width:1020px;font-size:12px;line-height:1.85;
+    color:rgba(199,192,175,.5);padding:0 4px;
+  }
+  .note b{color:rgba(199,192,175,.8);font-weight:500}
+
+  @media (max-width:720px){
+    .unit{padding:16px 14px 18px}
+    .meters{grid-template-columns:repeat(2,1fr)}
+    .controls{grid-template-columns:1fr;gap:16px}
+    .scope{aspect-ratio:1.2;min-height:200px}   /* 高さはアスペクト比で確保。min-heightで幅を強制せず横あふれ防止 */
+    .brand{font-size:22px}
+    .brand em{font-size:12px;letter-spacing:.22em}
+    .head-sub{display:none}
+    .se-toggle{margin-left:auto}
+    .combo{top:26px;left:8px;font-size:11px}
+    .combo b{font-size:16px}
+    .pop{left:27%;top:40%;font-size:24px}   /* 右のレーダー・下の吹き出しと重ならない位置に */
+    .pop small{display:none}
+    .score{margin-left:0;width:100%;justify-content:space-between}
+    /* 開始画面: 曲選択をスクロールなしで見せるためコンパクト化 */
+    .screen{gap:8px;padding:14px 16px}
+    #scrStart h2{font-size:19px;line-height:1.12}
+    #scrStart h2 small{display:none}   /* "Session 01"はモバイルでは省いて曲選択を上に */
+    .tracksel{gap:8px}
+    .tracksel__lab{font-size:14px}
+    .tracksel__list{width:100%}
+    .trk{min-width:0;width:100%;padding:6px 12px}
+    .howto__lab{font-size:13px}
+    .howto ol{font-size:12px;line-height:1.7}
+
+    /* プレイ情報は用途ごとに行を分け、数値や単位の途中で折り返さない。 */
+    .hud{font-size:10px;letter-spacing:0;padding:9px 10px;column-gap:6px;color:#c9d6cc;background:linear-gradient(180deg,rgba(6,10,7,.88),rgba(6,10,7,.68) 75%,transparent)}
+    .hud .warn{color:#ffa28d}
+    .xy{top:28px;right:8px;width:46%;aspect-ratio:1.45}
+    .bubble{
+      left:8px;right:auto;bottom:8px;width:auto;max-width:calc(54% - 16px);   /* 右上のレーダーを隠さない */
+      padding:8px 10px;font-size:12px;line-height:1.6;
+      word-break:normal;line-break:strict;text-wrap:pretty;overflow-wrap:break-word;
+    }
+    .meters{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .m{min-width:0;padding:8px 9px}
+    .m__lab{font-size:10px;letter-spacing:.08em;gap:4px;white-space:nowrap}
+    .m__val{white-space:nowrap}
+    .guide{font-size:12px;line-height:1.5;white-space:nowrap;letter-spacing:0}
+    .controls{grid-template-columns:minmax(0,1fr);padding-inline:8px}
+    .fader{min-width:0}
+    .fader__top{align-items:center;gap:8px}
+    .fader__name{display:flex;flex-direction:column;gap:2px;white-space:nowrap;letter-spacing:.12em}
+    .fader__name i{margin-left:0;white-space:nowrap}
+    .fader__val{flex:none;white-space:nowrap}
+    .bay{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 8px}
+    .bay .btn{min-width:0;min-height:44px;padding:9px 10px;font-size:13px;letter-spacing:.06em;white-space:nowrap}
+    .bay:has(#pauseBtn[hidden]) #playBtn{grid-column:1 / -1}
+    .bay .src{grid-column:1 / -1;min-width:0;width:100%;font-size:11px}
+    .bay .score{grid-column:1 / -1;min-width:0;white-space:nowrap}
+  }
+
+  /* ---------- in-session: the whole console fits one screen; the scope takes what is left ---------- */
+  body.in-session{padding-block:8px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center}
+  body.in-session .wrap{width:100%}
+  body.in-session .note,body.in-session .shape-feedback,body.in-session .guide{display:none}
+  body.in-session .unit{padding:10px 18px 10px}
+  body.in-session .screw{display:none}
+  body.in-session .head{padding:0 4px 7px;margin-bottom:8px}
+  body.in-session .brand{font-size:21px}
+  body.in-session .brand em{font-size:13px}
+  body.in-session .scope{aspect-ratio:auto;min-height:0}
+  body.in-session .xy{width:auto;height:calc(100% - 40px);max-width:42%}
+  body.in-session .meters{margin-top:8px}
+  body.in-session .m{padding:6px 10px 8px}
+  body.in-session .m__lab{margin-bottom:3px}
+  body.in-session .m__val{font-size:16px}
+  body.in-session .m__bar{height:14px;margin-top:5px}
+  body.in-session .performance{
+    margin-top:8px;padding:8px 12px;display:grid;column-gap:22px;
+    grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);
+    grid-template-areas:"c c" "mh ph" "md pr" "mt st";
+  }
+  body.in-session .client-row{grid-area:c;margin-bottom:6px;padding-bottom:6px}
+  body.in-session .mission-head{grid-area:mh}
+  body.in-session #missionDetail{grid-area:md;margin:3px 0 5px;min-height:2.8em}
+  body.in-session #missionTrack{grid-area:mt;align-self:end}
+  body.in-session .precision-head{grid-area:ph;margin-top:0}
+  body.in-session .precision-readout{grid-area:pr;margin:3px 0 5px;display:flex;flex-direction:column;align-items:flex-start}
+  body.in-session #stabilityTrack{grid-area:st;align-self:end;height:8px;margin-top:0}
+  body.in-session .controls{margin-top:10px;padding:10px 12px 4px;gap:10px 24px}
+  body.in-session .fader__top{margin-bottom:5px}
+  body.in-session .gr{margin-top:6px}
+  body.in-session .bay{margin-top:8px;padding-top:8px}
+  body.in-session .bay .btn{padding:7px 16px}
+  body.in-session .score b{font-size:19px}
+  @media (max-width:720px){
+    body.in-session{padding-inline:8px}
+    body.in-session .unit{padding:8px 10px}
+    body.in-session .head{padding-bottom:5px;margin-bottom:6px}
+    body.in-session .brand{font-size:17px}
+    body.in-session .brand em{font-size:10px}
+    body.in-session .se-toggle{padding:2px 7px;font-size:11px}
+    body.in-session .xy{height:calc(100% - 32px);max-width:48%;top:26px}
+    body.in-session .meters{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:6px}
+    body.in-session .m{padding:5px 6px 6px}
+    body.in-session .m__lab{font-size:9px;letter-spacing:.04em}
+    body.in-session .m__lab span+span{display:none}
+    body.in-session .m__val{font-size:14px}
+    body.in-session .m__bar{height:11px;margin-top:4px}
+    body.in-session .performance{margin-top:6px;padding:6px 9px;font-size:10.5px;
+      grid-template-columns:minmax(0,1fr);grid-template-areas:"c" "mh" "md" "mt" "ph" "pr" "st"}
+    body.in-session .client-row{margin-bottom:4px;padding-bottom:4px}
+    body.in-session #clientFace{font-size:14px}
+    body.in-session .mission-head b{font-size:11.5px}
+    body.in-session #missionDetail{min-height:2.6em;margin:1px 0 3px;line-height:1.3}
+    body.in-session #missionTrack{height:5px;margin-bottom:4px}
+    body.in-session #precisionRange{display:none}
+    body.in-session .precision-readout{margin:0 0 3px;flex-direction:row}
+    body.in-session #stabilityTrack{height:5px}
+    body.in-session .controls{margin-top:8px;padding:6px 4px 0;gap:8px}
+    body.in-session .fader__top{align-items:baseline;margin-bottom:0}
+    body.in-session .fader__name{flex-direction:row;align-items:baseline;gap:6px;font-size:13px}
+    body.in-session .fader__name i{font-size:10.5px}
+    body.in-session .fader__val{font-size:15px}
+    body.in-session input[type=range]{height:44px}             /* 指で掴める高さ */
+    body.in-session .ticks{margin-top:-6px;font-size:10px}
+    body.in-session .gr{margin-top:3px;font-size:10.5px}
+    body.in-session .bay{margin-top:6px;padding-top:6px;grid-template-columns:1fr 1fr 1.15fr;gap:6px}
+    body.in-session .bay .btn{min-height:38px;padding:6px 6px;font-size:12px}
+    body.in-session .bay .src{display:none}
+    body.in-session .bay .score{grid-column:auto;padding:3px 8px}
+    body.in-session .score span{font-size:9px;letter-spacing:.12em}
+    body.in-session .score b{font-size:16px}
+  }
+  @media (max-width:720px) and (max-height:680px){   /* iPhone SE 級の低い画面だけ、もう一段詰める */
+    body.in-session{padding-block:4px}
+    body.in-session .head{padding-bottom:3px;margin-bottom:4px}
+    body.in-session input[type=range]{height:36px}
+    body.in-session .ticks{display:none}
+    body.in-session .m__bar{height:9px;margin-top:3px}
+    body.in-session .controls{gap:4px;margin-top:6px}
+    body.in-session .bay .btn{min-height:36px}
+    body.in-session .client-row{margin-bottom:3px;padding-bottom:3px}
+  }
+  @media (max-width:380px){
+    body{padding-inline:10px}
+    .unit{padding-inline:12px}
+    .guide{font-size:11px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="unit">
+    <div class="screw tl"></div><div class="screw tr"></div>
+    <div class="screw bl"></div><div class="screw br"></div>
+
+    <div class="head">
+      <div class="brand"><span class="lamp" id="lamp"></span>NG&#8209;1<em>Nori&nbsp;Guard</em></div>
+      <div class="head-sub">Mastering Limiter / Loudness War Edition</div>
+      <span class="exp-badge" title="RELEASEに「ちょうどいい範囲」がある比較用の試作版">比較版<span class="exp-long">：RELEASE適正範囲</span></span>
+      <button class="se-toggle" id="seBtn" type="button" aria-pressed="true">SE ON</button>
+    </div>
+
+    <div class="scope" id="scopeBox">
+      <canvas id="scope"></canvas>
+      <div class="nori-fog" id="noriFog" aria-hidden="true"></div>
+      <div class="combo" id="combo" aria-hidden="true">COMBO <b id="comboN">0</b>s</div>
+
+      <div class="hud">
+        <div class="hud__target">TARGET <b id="hudTarget">−13.0</b> LUFS</div>
+        <div id="hudTime">0:00 / 2:25</div>
+      </div>
+
+      <div class="xy" id="xyBox" hidden><canvas id="xy" aria-label="音圧と山のレーダー"></canvas></div>
+
+      <div class="bubble" id="bubble" hidden></div>
+      <div class="pop" id="pop" aria-live="polite"></div>
+
+      <!-- start -->
+      <section class="screen" id="scrStart">
+        <h2><small>Session 01</small>音圧の達人～波形をコントロールせよ～</h2>
+        <div class="tracksel" role="radiogroup" aria-label="課題曲を選ぶ">
+          <span class="tracksel__lab">課題曲を選ぶ</span>
+          <div class="tracksel__list">
+            <label class="trk">
+              <input type="radio" name="trk" value="track02" checked>
+              <span class="trk__name">ごめんね、のりです。</span>
+              <span class="trk__meta"><span class="trk__gen">IDOL CITY POP</span></span>
+            </label>
+            <label class="trk">
+              <input type="radio" name="trk" value="track03">
+              <span class="trk__name">ノリハケイシグナル</span>
+              <span class="trk__meta"><span class="trk__gen">J-POP</span></span>
+            </label>
+            <label class="trk">
+              <input type="radio" name="trk" value="track01">
+              <span class="trk__name">ノーマライズ</span>
+              <span class="trk__meta"><span class="trk__gen">J-HARDCORE</span></span>
+            </label>
+            <label class="trk">
+              <input type="radio" name="trk" value="track04">
+              <span class="trk__name">NORI WAVE</span>
+              <span class="trk__meta"><span class="trk__gen">FULLON</span></span>
+            </label>
+            <label class="trk">
+              <input type="radio" name="trk" value="track05">
+              <span class="trk__name">DAI-PAN</span>
+              <span class="trk__meta"><span class="trk__gen">JERSEY CLUB</span></span>
+            </label>
+            <label class="trk">
+              <input type="radio" name="trk" value="track06">
+              <span class="trk__name">のりのりNightmare</span>
+              <span class="trk__meta"><span class="trk__gen">CHIPTUNE</span></span>
+            </label>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn btn--go" id="startBtn">▶ 開始</button>
+          <button class="btn" id="pickBtn" type="button" hidden>音声ファイルを選ぶ</button>
+          <input type="file" id="pickFile" accept="audio/*,.mp3,.wav,.m4a" hidden>
+          <span class="src" id="bootMsg">音声エンジン待機中</span>
+        </div>
+        <div class="loadprog" id="loadProg" hidden role="progressbar" aria-label="課題曲の準備" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="loadprog__steps" id="loadSteps" aria-hidden="true"></div>
+          <div class="loadprog__bar"><i id="loadFill"></i></div>
+          <div class="loadprog__meta"><span id="loadLabel">読み込み中…</span><b id="loadPct">0%</b></div>
+        </div>
+        <div class="howto">
+          <span class="howto__lab">遊び方</span>
+          <ol>
+            <li>右上の<b>レーダー</b>は 横＝音圧(LUFS)、縦＝山(クレスト)。光る点を<b>緑の枠</b>に入れよう。</li>
+            <li><b>GAINを上げると点は右下へ</b>（大きく・平らに）。<b>RELEASE</b>は曲のノリに合わせる：つまみ下の<b>緑の範囲</b>に入れると海苔がたまりにくい。<b>短すぎると歪み、長すぎるとポンピング</b>で海苔が増えます。範囲は曲の場所によって動きます。</li>
+            <li>枠の<b>中心に近いほど高得点</b>。枠内に居続けると<b>安定ボーナス</b>が加点されます。</li>
+            <li><b>クライアントの依頼</b>が5秒前に届き、<b>オレンジの枠</b>が出現。「音圧を上げて」は右へ、「山を残して」は上へ、「静かなパートは静かに」は左へ、「リリースを曲に合わせて」はRELEASEを緑の範囲に。課題ごとの条件が足りないと枠が点線になります。10秒中<b>合計5秒</b>で+200点。</li>
+            <li>クライアントの<b>機嫌</b>は課題の成否や音の状態で上下し、最後に<b>満足度ボーナス</b>に。40未満だと<b>リテイク</b>。たまに来る<b>無茶振り</b>は失敗しても機嫌はあまり下がりません。</li>
+            <li><b>海苔メーター</b>は常に増減します。枠の下のほう（音圧を攻めた側）ではじわじわ増え、上に余裕を作ると回復。枠より下の<b>海苔ゾーン</b>に沈むと急増。65でボーナス停止、100で終了。</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- game over -->
+      <section class="screen" id="scrOver" hidden>
+        <h2><small>Nori Detected</small>波形が海苔になりました。</h2>
+        <p id="overMsg">天井に貼りついた時間が長すぎました。ゲインを2〜3 dB戻すか、リリースを伸ばしてピークを逃がしてください。</p>
+        <div class="stats" id="overStats"></div>
+        <div class="row"><button class="btn btn--go" id="overRetry">もう一度</button><button class="btn" id="overTitle">タイトルへ</button></div>
+      </section>
+
+      <!-- result -->
+      <section class="screen" id="scrResult" hidden>
+        <h2><small>Delivery Report</small><span id="resTitle">納品完了</span></h2>
+        <div class="rank" id="resRank">—</div>
+        <div class="stats" id="resStats"></div>
+        <p id="resNorm"></p>
+        <div class="row"><button class="btn btn--go" id="resRetry">もう一度</button><button class="btn" id="resTitleBtn">タイトルへ</button></div>
+      </section>
+    </div>
+
+    <div class="meters">
+      <div class="m" id="mLufs">
+        <div class="m__lab"><span>Loudness</span><span>1秒 / LUFS</span></div>
+        <div class="m__val" id="vLufs">−∞</div>
+        <div class="m__bar"><div class="m__fill" id="fLufs"></div><div class="target-band" id="targetBand"></div><div class="mission-band" id="missionBand" hidden></div><div class="m__mark" id="kLufs"></div></div>
+      </div>
+      <div class="m" id="mCrest">
+        <div class="m__lab"><span>Crest</span><span>1秒 / dB</span></div>
+        <div class="m__val" id="vCrest">0.0</div>
+        <div class="m__bar"><div class="m__fill crest" id="fCrest"></div><div class="m__mark floor" id="kCrest" hidden></div></div>
+      </div>
+      <div class="m" id="mPeak">
+        <div class="m__lab"><span>Sample Peak</span><span>dBFS</span></div>
+        <div class="m__val" id="vPeak">−∞</div>
+        <div class="m__bar"><div class="m__fill" id="fPeak"></div><div class="m__mark" style="right:1%"></div></div>
+      </div>
+      <div class="m" id="mNori">
+        <div class="m__lab"><span>海苔メーター</span><span>%</span></div>
+        <div class="m__val" id="vNori">0</div>
+        <div class="m__bar"><div class="m__fill nori" id="fNori"></div></div>
+      </div>
+    </div>
+
+    <div class="shape-feedback"><b id="shapeStatus">開始後に波形を判定</b><span id="shapeHint">GAINで音圧、RELEASEで歪み（海苔のたまり方）を調整</span></div>
+    <p class="guide" id="rangeGuide" aria-live="polite">目標の帯に音圧を合わせましょう</p>
+    <section class="performance" id="performance" aria-label="課題と安定ボーナス" hidden>
+      <div class="client-row"><span id="clientFace" aria-hidden="true">🙂</span><b id="clientWho">Client</b><div class="client-mood" aria-hidden="true"><i id="clientBar"></i></div><span id="clientMood">機嫌 60</span></div>
+      <div class="mission-head"><b id="missionTitle" aria-live="polite">通常区間</b><span id="missionTimer"></span></div>
+      <p id="missionDetail"></p>
+      <div class="challenge-progress" id="missionTrack" aria-hidden="true" hidden><i id="missionProgress"></i></div>
+      <div class="precision-head"><b>安定ボーナス</b><span id="precisionRate">+0点/秒</span></div>
+      <div class="precision-readout"><span id="precisionRange"></span><span id="precisionHint"></span></div>
+      <div class="precision-charge" id="stabilityTrack" aria-hidden="true"><i id="precisionCharge"></i></div>
+    </section>
+
+    <div class="controls">
+      <div class="fader">
+        <div class="fader__top">
+          <div class="fader__name">Gain<i>入力ゲイン</i></div>
+          <div class="fader__val" id="vGain">+4.0 dB</div>
+        </div>
+        <input type="range" id="gain" min="-12" max="30" step="0.1" value="4" aria-label="入力ゲイン(dB)">
+        <div class="ticks"><span>−12</span><span>0</span><span>+15</span><span>+30</span></div>
+        <div class="gr" title="リミッターが削っている量"><span>GR</span><div class="gr__bar"><i id="fGR"></i></div><span id="vGR">0.0 dB</span></div>
+      </div>
+      <div class="fader">
+        <div class="fader__top">
+          <div class="fader__name">Release<i>リリース <b id="relBandLab"></b></i></div>
+          <div class="fader__val" id="vRel">120 ms</div>
+        </div>
+        <div class="need-rail" aria-hidden="true"><div class="need-mark" id="relNeed" hidden><span id="relNeedLab">250ms↑</span></div></div>
+        <div class="rel-wrap"><input type="range" id="rel" min="5" max="400" step="5" value="120" aria-label="リリースタイム(ミリ秒)">
+          <div class="band-rail" aria-hidden="true"><i id="relBand" hidden></i></div></div>
+        <div class="ticks"><span>5</span><span>速い：歪み ←→ 遅い：ポンピング</span><span>400</span></div>
+      </div>
+    </div>
+
+    <div class="bay">
+      <button class="btn" id="playBtn">▶ 開始</button>
+      <button class="btn" id="pauseBtn" hidden>Ⅱ 一時停止</button>
+      <div class="src" id="srcName">SOURCE: ノーマライズ (J-HARDCORE)</div>
+      <div class="score"><span>SCORE</span><b id="vScore">0</b></div>
+    </div>
+  </div>
+
+  <p class="note">
+    天井は <b>−0.1 dBFS（クリップ設定）</b> 固定。ラウドネスは K特性フィルタを通した 1秒平均の近似値で、放送規格の測定器ではありません。クレストは1秒間のピークと平均(RMS)の差。緑の枠と海苔ラインは、曲ごとに同じリミッターを事前にオフライン試走して「届く位置」に置いています。
+  </p>
+</div>
+
+<!-- 音声は選択曲だけを必要時に読み込む -->
+<script>
+(function(){
+  "use strict";
+
+  /* ============ constants ============ */
+  var CEIL_DB = -0.1;
+  var CEIL = Math.pow(10, CEIL_DB/20);
+  var BASE_SESSION = 145;        // 要求タイミングを定義した基準尺(秒)
+  var session = BASE_SESSION;    // 実際のセッション尺 = 選択曲の長さに合わせる
+  var COL_AMBER = "#f2a63b", COL_AMBER_CORE = "#ffd489";
+  var COL_NORI = "#16301f", COL_NORI_EDGE = "#25543a", COL_NORI_FLECK = "#3f7a55";
+
+  // ===== 音圧目標ルールのパラメータ =====
+  // クライアントの要求音圧(target LUFS)が段階的に上がる。GAINで出力音圧を「適正レンジ」に合わせ続ける。
+  //   下限(target-0.5)未満=音圧不足で0点 / 上限(target+2.0)超え=上げ過ぎで減点。攻めるほど海苔リスク。
+
+  var DEMANDS = [];
+
+  // 選択曲の長さに合わせてセッション尺を設定(要求音圧列はプレイ毎に生成)
+  function sessionFor(dur){
+    // 曲末に約0.9秒の余白を残し、終了フェードが実音の末尾に乗る＆巻き戻らないように
+    return (isFinite(dur) && dur > 8) ? (dur - 0.9) : BASE_SESSION;
+  }
+  function applyTiming(dur){ session = sessionFor(dur); }
+
+  /* Musical challenges. The analysis finds energy changes, not named song sections. */
+  var chartCache = {}, chartPending = {};
+  var CHALLENGE = { preview:5, length:10, required:5, interval:20, charge:0.8, grace:0.7, precisionRate:24 };
+  // 2D zone: floor = reachable crest at the band centre minus slack; nori line sits below it.
+  var ZONE = { half:1.25, slack:1.0, punchSlack:0.3, noriMax:8.5 };
+
+  function analysePhrases(buf, duration){
+    var channels=[], bins=[], step=0.25;
+    for(var c=0;c<buf.numberOfChannels;c++) channels.push(buf.getChannelData(c));
+    for(var t=0;t<duration;t+=step){
+      var sq=0, peak=0, count=0, end=Math.min(buf.length,Math.floor((t+step)*buf.sampleRate));
+      for(var i=Math.floor(t*buf.sampleRate);i<end;i+=16){
+        var v=0;
+        for(var ch=0;ch<channels.length;ch++) v+=channels[ch][i]/channels.length;
+        sq+=v*v; peak=Math.max(peak,Math.abs(v)); count++;
+      }
+      var rms=Math.sqrt(sq/Math.max(1,count));
+      bins.push({level:db(rms),crest:Math.max(0,db(peak)-db(rms))});
+    }
+    return {step:step,bins:bins};
+  }
+
+  // Challenge catalogue. goal: demand offset from the running base target. center/half: orange box
+  // relative to goal. floor: offset from the green floor, or 'punch' for the calibrated high floor.
+  var MISSIONS = {
+    push:   {name:'ここから音圧を上げて', goal:1.8,  center:1.1,  half:0.9,  floor:-0.3,   reward:200},
+    punch:  {name:'山を残して',         goal:0.5,  center:0.75, half:1.25, floor:'punch', reward:200},
+    quiet:  {name:'静かなパートは静かに', goal:-3.0, center:0.25, half:0.75, floor:0,      reward:200},
+    release:{name:'リリースを曲に合わせて', goal:0.5, center:0.75, half:1.25, floor:0,   reward:200, band:true},
+    muri:   {name:'無茶振り：もっと音圧を！', goal:3.2, center:0.6, half:0.9, floor:-0.8, reward:300, noriCap:30}
+  };
+  var MOOD = { start:60, bonus:5, ok:70, retake:40 };
+  var RANK = { master:0.75, engineer:0.55, assistant:0.30 };  // 攻略率の閾値
+  var RANKS = ["見習い","アシスタント","マスタリングエンジニア","マスタリング職人"];
+
+  /* Delivery verdict: a pure function of the run's numbers, so the rank, the heading and the advice
+     always agree. Rules (checked by tests):
+       職人 ⇒ 一発OK / リテイク ⇒ アシスタント以下 / 一発OK ⇒ エンジニア以上 / 攻略率が上がってランクが下がることはない
+     r: {pct, mood, successes, missions, span, under, over, short, noriHigh} (times in seconds) */
+  function judgeDelivery(r){
+    var missionsOk = r.successes >= Math.ceil(r.missions * 0.7), retake = r.mood < MOOD.retake;
+    var level = r.pct >= RANK.master && r.mood >= MOOD.ok && missionsOk ? 3
+      : r.pct >= RANK.engineer && !retake ? 2
+      : r.pct >= RANK.assistant ? 1 : 0;
+    // The client's reaction never contradicts the rank.
+    var verdict = retake ? "retake" : (r.mood >= MOOD.ok && level >= 2 ? "ok" : "minor");
+    var pctOf = function(t){ return Math.round(t / Math.max(r.span, 0.001) * 100); };
+    var limit = r.span * 0.12, worst = Math.max(r.under, r.over, r.short, r.noriHigh), advice;
+    if (level === 3) advice = "音圧と山を両立し、見せ場の課題も決めました。文句なしの納品です。";
+    else if (worst > limit && worst === r.noriHigh) advice = "海苔が65以上（ボーナス停止）の時間が " + pctOf(r.noriHigh) + "% ありました。枠の右側で攻め続けると海苔がたまります。ときどき左上へ逃がし、RELEASEを緑の範囲に合わせるとたまりにくくなります。";
+    else if (worst > limit && worst === r.under) advice = "点が緑の枠より左（音圧不足）にいた時間が " + pctOf(r.under) + "% ありました。不足中は通常点が入りません。GAINを上げて右へ。";
+    else if (worst > limit && worst === r.over) advice = "点が緑の枠より右（音圧過多）にいた時間が " + pctOf(r.over) + "% ありました。上げ過ぎは加点が減り、海苔にも近づきます。GAINを下げて左へ。";
+    else if (worst > limit) advice = "音圧は合っていても、山が枠の下限より低い時間が " + pctOf(r.short) + "% ありました。音圧を枠の左寄りに抑えて上へ（GAIN↓）。";
+    else if (!missionsOk) advice = "枠のキープは安定しています。次は課題：予告で準備して、オレンジの枠に合計5秒入れましょう（クリア " + r.successes + " / " + r.missions + "）。";
+    else if (r.mood < MOOD.ok) advice = "課題はこなせています。枠の中に長く居続けるとクライアントの機嫌が上がり、満足度ボーナスも増えます。";
+    else if (r.pct < RANK.master) advice = "良い仕上がりです。枠の中心（点線）に近づけ、海苔を低く保つほど得点が伸び、職人に届きます。";
+    else advice = "攻略率は職人の水準です。課題と機嫌の条件もそろえば職人です。";
+    return { level: level, rank: RANKS[level], verdict: verdict, missionsOk: missionsOk, advice: advice };
+  }   // client mood 0..100; bonus = mood × 5 points
+
+  function baseTarget(t,duration){ return -13+2.5*t/duration; }
+  function addMission(missions,demands,start,type,duration){
+    var d=MISSIONS[type], base=baseTarget(start,duration), goal=Math.round((base+d.goal)*10)/10;
+    missions.push({start:start,end:start+CHALLENGE.length,type:type,target:goal,
+      center:goal+d.center,half:d.half,name:d.name});
+    demands.push({t:start,target:goal});
+    demands.push({t:start+CHALLENGE.length,target:Math.round(base*10)/10});
+  }
+  // authored: optional hand-made list [{t:秒, type:'push'|'punch'|'quiet'|'release'|'muri'}, ...]
+  // Ideal release per second ≈ half the gap between hits (onsets), so gain reduction recovers before the
+  // next hit: dense parts want short release, sparse parts long. Clamped 60-350 ms, smoothed, 10 ms steps.
+  var RELBAND = { lo:0.75, hi:1.35, min:60, max:350 };
+  function analyseRelease(buf,duration){
+    var sr=buf.sampleRate, F=Math.round(sr/100), n=Math.floor(Math.min(buf.length,duration*sr)/F), ch=[], env=new Float32Array(n), mx=-200;
+    for(var c=0;c<buf.numberOfChannels;c++)ch.push(buf.getChannelData(c));
+    for(var f=0;f<n;f++){var sq=0,k=0;for(var i=f*F;i<(f+1)*F;i+=4){var v=0;for(var c2=0;c2<ch.length;c2++)v+=ch[c2][i]/ch.length;sq+=v*v;k++;}
+      env[f]=10*Math.log10(sq/k+1e-12);if(env[f]>mx)mx=env[f];}
+    var secs=Math.ceil(duration), cnt=new Array(secs).fill(0), last=-99;
+    for(var g=3;g<n;g++){var prev=Math.min(env[g-1],env[g-2],env[g-3]);
+      if(env[g]-prev>4&&env[g]>mx-30&&g-last>=5){last=g;var sI=Math.floor(g/100);if(sI<secs)cnt[sI]++;}}
+    var ideal=cnt.map(function(_,i){var s=0,k=0;for(var j=i-3;j<=i+3;j++)if(j>=0&&j<secs){s+=cnt[j];k++;}
+      var rate=s/Math.max(k,1);return Math.round(clamp(500/Math.max(rate,0.5),RELBAND.min,RELBAND.max)/10)*10;});
+    return ideal;
+  }
+  function relBandAt(chart,time){
+    var a=chart.relIdeal; if(!a||!a.length)return null;
+    var ideal=a[clamp(Math.floor(time),0,a.length-1)];
+    return {ideal:ideal, lo:Math.max(5,Math.round(ideal*RELBAND.lo/5)*5), hi:Math.min(400,Math.round(ideal*RELBAND.hi/5)*5)};
+  }
+  function inRelBand(ms,band){ return !band || (ms>=band.lo && ms<=band.hi); }
+  function makeChart(buf,duration,authored){
+    var analysis=analysePhrases(buf,duration), bins=analysis.bins, step=analysis.step;
+    var missions=[], demands=[{t:0,target:-13}], previousType=null, repeat=0;
+    if(authored && authored.length){
+      authored.slice().sort(function(a,b){return a.t-b.t;}).forEach(function(a){
+        var last=missions[missions.length-1];
+        if(!MISSIONS[a.type] || a.t<CHALLENGE.preview || a.t+CHALLENGE.length>duration-2 || (last && a.t<last.end+CHALLENGE.preview)) return;
+        addMission(missions,demands,a.t,a.type,duration);
+      });
+    }else{
+      var levels=bins.map(function(b){return b.level;}).filter(function(v){return v>-42;}).sort(function(a,b){return a-b;});
+      var median=levels.length?levels[Math.floor(levels.length/2)]:-20;
+      var picks=[];
+      for(var center=12;center+CHALLENGE.length<=duration-10;center+=CHALLENGE.interval){
+        var best=null;
+        for(var j=Math.ceil((center-2)/step);j<=Math.floor((center+2)/step);j++){
+          var start=j*step;
+          if(start+CHALLENGE.length>duration-10 || (picks.length && start<picks[picks.length-1].start+CHALLENGE.length+CHALLENGE.preview+2)) continue;
+          var section=bins.slice(j,j+Math.round(CHALLENGE.length/step));
+          // A fade-out or near-silence should not become an impossible challenge.
+          if(section.length<CHALLENGE.length/step || section.filter(function(b){return b.level>-42;}).length<section.length*0.8) continue;
+          var before=(bins[j-2].level+bins[j-1].level)/2, after=(bins[j].level+bins[j+1].level)/2;
+          var delta=after-before, strength=Math.abs(delta)-Math.abs(start-center)*0.15;
+          if(!best || strength>best.strength) best={start:start,delta:delta,strength:strength,section:section};
+        }
+        if(!best) continue;
+        var mean=10*Math.log10(best.section.reduce(function(s,b){return s+Math.pow(10,b.level/10);},0)/best.section.length);
+        var type=mean<median-3 ? 'quiet'
+          : Math.abs(best.delta)>1.2 ? (best.delta>0?'push':'punch') : (previousType==='push'?'punch':'push');
+        // Avoid a long run of the same objective even in uniformly loud tracks.
+        if(type===previousType && repeat>=2) type=type==='push'?'punch':'push';
+        repeat=type===previousType?repeat+1:1;previousType=type;
+        picks.push({start:best.start,type:type});
+      }
+      // Variety: every second "leave peaks" becomes a release challenge; the last late push is the client's unreasonable ask.
+      var punches=0;
+      picks.forEach(function(pk){if(pk.type==='punch'&&(punches++%2===1))pk.type='release';});
+      if(picks.length>=3){
+        for(var q=picks.length-1;q>=0;q--)if(picks[q].type==='push'&&picks[q].start>duration*0.5){picks[q].type='muri';break;}
+      }
+      picks.forEach(function(pk){addMission(missions,demands,pk.start,pk.type,duration);});
+    }
+    var missionMax=missions.reduce(function(s,m){return s+MISSIONS[m.type].reward*1.5;},0);
+    return {duration:duration,bins:bins,missions:missions,demands:demands,zone:null,relIdeal:analyseRelease(buf,duration),
+      maxScore:duration*(32+CHALLENGE.precisionRate)+missionMax+100*MOOD.bonus};
+  }
+
+  /* ----- zone calibration: run the real limiter chain offline and measure where (LUFS, crest) can go ----- */
+  function monoOf(buf){
+    var n=buf.numberOfChannels, out=new AudioBuffer({numberOfChannels:1,length:buf.length,sampleRate:buf.sampleRate}), o=out.getChannelData(0);
+    for(var c=0;c<n;c++){var d=buf.getChannelData(c);for(var i=0;i<d.length;i++)o[i]+=d[i]/n;}
+    return out;
+  }
+  // gains: dB per 1-second slot. Returns per-second 1s loudness (K-weighted) and 1s crest of the output.
+  function renderPath(mono,gains,rel){
+    var sr=mono.sampleRate, oc=new OfflineAudioContext(2,mono.length,sr);
+    var s=oc.createBufferSource();s.buffer=mono;
+    var g=oc.createGain();g.gain.setValueAtTime(Math.pow(10,gains[0]/20),0);
+    for(var i=0;i<gains.length;i++)g.gain.linearRampToValueAtTime(Math.pow(10,gains[i]/20),i+0.5);
+    var c=oc.createDynamicsCompressor();c.threshold.value=-1;c.knee.value=0;c.ratio.value=20;c.attack.value=.002;c.release.value=rel;
+    var clip=oc.createWaveShaper();clip.curve=clipCurve(CEIL);clip.oversample='2x';
+    var f1=oc.createBiquadFilter();f1.type='highpass';f1.frequency.value=60;f1.Q.value=.5;
+    var f2=oc.createBiquadFilter();f2.type='highshelf';f2.frequency.value=1500;f2.gain.value=4;
+    var merge=oc.createChannelMerger(2);
+    s.connect(g).connect(c).connect(clip);clip.connect(merge,0,0);clip.connect(f1).connect(f2).connect(merge,0,1);
+    merge.connect(oc.destination);s.start();
+    return oc.startRendering().then(function(r){
+      var a=r.getChannelData(0),k=r.getChannelData(1),L=[],C=[];
+      for(var sec=0;sec<gains.length;sec++){
+        var lo=sec*sr,hi=Math.min(a.length,(sec+1)*sr),sq=0,ks=0,pk=0;
+        for(var j=lo;j<hi;j++){sq+=a[j]*a[j];ks+=k[j]*k[j];var v=a[j]<0?-a[j]:a[j];if(v>pk)pk=v;}
+        var n=Math.max(1,hi-lo),rms=Math.sqrt(sq/n);
+        L.push(-0.691+10*Math.log10(Math.max(ks/n,1e-10)));
+        C.push(rms>1e-4?db(pk)-db(rms):NaN);
+      }
+      return {L:L,C:C};
+    });
+  }
+  function smoothGains(g){
+    return g.map(function(v,i){var a=g[Math.max(0,i-1)],b=g[Math.min(g.length-1,i+1)];return clamp((a+2*v+b)/4,-12,30);});
+  }
+  // Crest reachable at loudness L, from two measured points of the same second.
+  function crestAtLoudness(p,q,L){
+    if(!Number.isFinite(p.c)||!Number.isFinite(q.c)||p.L<-45)return NaN;
+    var slope=Math.abs(q.L-p.L)>0.25?clamp((q.c-p.c)/(q.L-p.L),-1.5,0):-0.75;
+    var near=Math.abs(p.L-L)<Math.abs(q.L-L)?p:q;
+    return near.c+slope*(L-near.L);
+  }
+  function smoothSeries(a,r){
+    return a.map(function(_,i){var s=0,n=0;for(var j=i-r;j<=i+r;j++)if(Number.isFinite(a[j])){s+=a[j];n++;}return n?s/n:NaN;});
+  }
+  function calibrateZone(chart,buf,onStep){
+    var step=0, tick=function(r){ step++; if(onStep)onStep(step); return r; };
+    var mono=monoOf(buf), secs=Math.ceil(chart.duration), T=[], g0=[];
+    for(var i=0;i<secs;i++){
+      T.push(targetAt(chart,i+0.5)+0.75);
+      var p=0,n=0;for(var b=i*4;b<i*4+4&&b<chart.bins.length;b++){p+=Math.pow(10,chart.bins[b].level/10);n++;}
+      g0.push(T[i]-(10*Math.log10(Math.max(p/Math.max(n,1),1e-10))-0.691));
+    }
+    function pair(rel,start){
+      var gA=smoothGains(start);
+      return renderPath(mono,gA,rel).then(tick).then(function(A){
+        var gB=smoothGains(gA.map(function(v,i){return v+(Number.isFinite(A.L[i])&&A.L[i]>-45?T[i]-A.L[i]:0);}));
+        return renderPath(mono,gB,rel).then(tick).then(function(B){return {A:A,B:B,gB:gB};});
+      });
+    }
+    return pair(0.12,g0).then(function(fast){
+      return pair(0.4,fast.gB.map(function(v){return v+0.7;})).then(function(slow){
+        var floor=[],punch=[],nori=[];
+        for(var i=0;i<secs;i++){
+          function at(r){return crestAtLoudness({L:r.A.L[i],c:r.A.C[i]},{L:r.B.L[i],c:r.B.C[i]},T[i]);}
+          var cf=at(fast),cs=at(slow),lo=Math.min(cf,cs),hi=Math.max(cf,cs);
+          floor.push(lo-ZONE.slack);punch.push(hi-ZONE.punchSlack);
+        }
+        floor=smoothSeries(floor,2);punch=smoothSeries(punch,2);
+        for(var k=0;k<secs;k++){
+          punch[k]=Math.max(punch[k],floor[k]+0.4);
+          // Nori line from the best reachable crest, so every track has the same build/recover feel:
+          // at the box centre with a good release the gauge slowly recovers; the loud (right) half fills it.
+          var best=punch[k]+ZONE.punchSlack;
+          nori.push(Number.isFinite(floor[k])?Math.min(ZONE.noriMax,best-(NORI.neutral+NORI.centre),floor[k]-0.3):NaN);
+        }
+        chart.zone={floor:floor,punch:punch,nori:nori};
+        return chart;
+      });
+    });
+  }
+  // Real progress of preparing a track: 1 decode step + 4 offline calibration renders.
+  var PROG = { total:5, labels:["読込","解析1","解析2","解析3","解析4"] }, prog = {}, progKey = null, progHideT = 0;
+  function setProg(key,done,failed){
+    prog[key] = { done:done, failed:!!failed };
+    if(key===progKey) renderProg();
+  }
+  function showProgFor(key){
+    progKey=key;
+    if(chartCache[key] && (bufCache[key] || key==="demo")){ clearTimeout(progHideT); $("loadProg").hidden=true; return; }  // already prepared
+    renderProg();
+  }
+  function renderProg(){
+    var box=$("loadProg"), p=prog[progKey];
+    clearTimeout(progHideT);
+    if(!p || p.failed){ box.hidden=true; return; }
+    var ready=p.done>=PROG.total, pct=Math.round(p.done/PROG.total*100);
+    box.hidden=false; box.classList.toggle("ready",ready);
+    // The decode step has no measurable progress: show a sliver so the moving stripes read as "working".
+    $("loadFill").style.width=Math.max(pct,4)+"%";
+    putText("loadPct",pct+"%");
+    putText("loadLabel", ready ? "準備完了" : p.done===0 ? "音声を読み込み中…" : "課題を解析中… "+(p.done)+" / 4");
+    box.setAttribute("aria-valuenow",String(pct));
+    var steps=$("loadSteps");
+    if(!steps.children.length) PROG.labels.forEach(function(l){var sp=document.createElement("span");sp.textContent=l;steps.appendChild(sp);});
+    for(var i=0;i<steps.children.length;i++) steps.children[i].className = i<p.done ? "done" : (i===p.done && !ready ? "now" : "");
+    if(ready && mode==="idle") progHideT=setTimeout(function(){ $("loadProg").hidden=true; },900);
+  }
+  function chartFor(key,buf){
+    if(chartCache[key])return Promise.resolve(chartCache[key]);
+    if(!chartPending[key])chartPending[key]=Promise.resolve().then(function(){
+      setProg(key,1);
+      return calibrateZone(makeChart(buf,sessionFor(buf.duration),TRACKS[key]&&TRACKS[key].chart),buf,function(n){setProg(key,1+n);});
+    }).then(function(chart){chartCache[key]=chart;setProg(key,PROG.total);return chart;})
+      .catch(function(e){delete chartPending[key];throw e;});
+    return chartPending[key];
+  }
+
+  function targetAt(chart,time){
+    var result=chart.demands[0].target;
+    for(var i=1;i<chart.demands.length && chart.demands[i].t<=time+1e-8;i++) result=chart.demands[i].target;
+    return result;
+  }
+  function seriesAt(a,time){
+    var x=clamp(time-0.5,0,a.length-1),i=Math.floor(x),j=Math.min(a.length-1,i+1),f=x-i;
+    if(!Number.isFinite(a[i]))return a[j];
+    if(!Number.isFinite(a[j]))return a[i];
+    return a[i]+(a[j]-a[i])*f;
+  }
+  // The green box (lo..hi × crest ≥ floor) and, during a challenge, the orange box.
+  function zoneAt(chart,time,index){
+    var T=targetAt(chart,time), z=chart.zone;
+    var r={lo:T-0.5,hi:T+2,cx:T+0.75,hx:ZONE.half,floor:seriesAt(z.floor,time),nori:seriesAt(z.nori,time),mission:null};
+    var m=chart.missions[index];
+    if(m && time>=m.start && time<m.end){
+      r.mission=m;
+      var d=MISSIONS[m.type];
+      r.mLo=m.center-m.half;r.mHi=m.center+m.half;
+      r.mFloor=d.floor==='punch'?seriesAt(z.punch,time):r.floor+d.floor;
+      r.needRel=d.rel||0;r.noriCap=d.noriCap||0;r.needBand=!!d.band;
+    }
+    return r;
+  }
+
+  // Pure, sample-time-driven scoring. Moving a control has no scoring side effect.
+  function PerformanceRun(chart){
+    this.chart=chart;this.time=0;this.base=0;this.precision=0;this.missionScore=0;
+    this.index=0;this.hits=0;this.hold=0;this.miss=0;this.precisionTime=0;
+    this.results=[];this.lastResult=null;this.rate=0;this.mood=MOOD.start;
+  }
+  PerformanceRun.prototype.completeMission=function(){
+    var m=this.chart.missions[this.index];
+    var success=this.hits+1e-8>=CHALLENGE.required;
+    var extra=(this.hits-CHALLENGE.required)/(CHALLENGE.length-CHALLENGE.required);
+    var d=MISSIONS[m.type], reward=success ? Math.round(d.reward*(1+0.5*clamp(extra,0,1))) : 0;
+    this.missionScore+=reward;
+    // An unreasonable ask costs little when missed and pleases a lot when met.
+    this.mood=clamp(this.mood+(success?(m.type==='muri'?20:10):(m.type==='muri'?-5:-12)),0,100);
+    this.lastResult={name:m.name,type:m.type,success:success,reward:reward,hits:this.hits,until:m.end+2};
+    this.results.push(this.lastResult);this.index++;this.hits=0;
+  };
+  PerformanceRun.prototype.tick=function(dt,lufs,crest,nori,rel){
+    var end=Math.min(this.time+dt,this.chart.duration);
+    while(this.time<end-1e-10){
+      var m=this.chart.missions[this.index];
+      if(m && this.time>=m.end-1e-8){this.completeMission();continue;}
+      var active=m && this.time>=m.start-1e-8;
+      var boundary=m?(active?m.end:m.start):end;
+      var length=Math.min(end-this.time,boundary-this.time);
+      if(length<1e-10){this.time=boundary;continue;}
+      var z=zoneAt(this.chart,this.time+length/2,this.index);
+      var floor=Number.isFinite(z.floor)?z.floor:-Infinity;
+      var hasL=Number.isFinite(lufs), hasC=Number.isFinite(crest);
+      // x: closer to the box centre scores more; too quiet scores nothing, too loud fades out.
+      var xF=0;
+      if(hasL && lufs>=z.lo){
+        if(lufs<=z.hi){var dx=(lufs-z.cx)/z.hx;xF=1-0.35*dx*dx;}
+        else xF=0.65*Math.max(0,1-(lufs-z.hi)/3);
+      }
+      // y: at or above the floor is full marks; sinking below fades out over 2.5 dB.
+      var yF=!hasC?0:(crest>=floor?1:clamp(1-(floor-crest)/2.5,0,1));
+      this.base+=length*32*xF*yF*(1-clamp(nori,0,100)/220);
+      var precise=hasL && hasC && lufs>=z.lo && lufs<=z.hi && crest>=floor && nori<65;
+      var onTask=z.mission && precise && lufs>=z.mLo-1e-8 && lufs<=z.mHi+1e-8 && !(crest<z.mFloor)
+        && !(z.needRel && !(rel>=z.needRel)) && !(z.noriCap && nori>=z.noriCap)
+        && !(z.needBand && !inRelBand(rel,relBandAt(this.chart,this.time+length/2)));
+      if(onTask)this.hits+=length;
+      // Client mood drifts with what they hear: steady work pleases, nori and wrong levels annoy.
+      var dm=precise?0.4:0;
+      if(nori>=65)dm-=2;
+      if(hasL&&lufs>z.hi+1)dm-=0.6;else if(hasL&&lufs<z.lo-1)dm-=0.4;
+      this.mood=clamp(this.mood+dm*length,0,100);
+      if(precise){
+        var old=this.hold;this.hold+=length;this.miss=0;this.precisionTime+=length;
+        function integral(h){return h<CHALLENGE.charge?h*h/(2*CHALLENGE.charge):h-CHALLENGE.charge/2;}
+        this.precision+=CHALLENGE.precisionRate*(integral(this.hold)-integral(old));
+        this.rate=CHALLENGE.precisionRate*Math.min(1,this.hold/CHALLENGE.charge);
+      }else{
+        this.miss+=length;this.rate=0;
+        if(this.miss>CHALLENGE.grace) this.hold=0;
+      }
+      this.time+=length;
+    }
+    var current=this.chart.missions[this.index];
+    if(current && this.time>=current.end-1e-8) this.completeMission();
+  };
+  PerformanceRun.prototype.total=function(){return this.base+this.precision+this.missionScore;};
+  PerformanceRun.prototype.moodBonus=function(){return Math.round(this.mood)*MOOD.bonus;};
+  PerformanceRun.prototype.successes=function(){return this.results.filter(function(r){return r.success;}).length;};
+
+  var run=null, gameChart=null, curZone=null;
+  function putText(id,text){var el=$(id);if(el.textContent!==text)el.textContent=text;}
+  function rangeText(center,half){return (center-half).toFixed(1)+' ～ '+(center+half).toFixed(1)+' LUFS';}
+  // Conditions beyond "dot in the orange box". Same rules as PerformanceRun.tick; listed so the UI can show them.
+  function missionBlocks(z){
+    var b=[];
+    if(!z.mission)return b;
+    if(z.needRel && !(parseFloat(relEl.value)>=z.needRel)) b.push('RELEASE '+z.needRel+'ms以上');
+    if(z.needBand && !inRelBand(parseFloat(relEl.value),relBandAt(gameChart,run.time))) b.push('RELEASEを緑の範囲へ');
+    if(nori>=65) b.push('海苔65未満');
+    else if(z.noriCap && nori>=z.noriCap) b.push('海苔'+z.noriCap+'未満');
+    return b;
+  }
+  function missionText(z){
+    var t=z.mission.type, band=z.mLo.toFixed(1)+' ～ '+z.mHi.toFixed(1)+' LUFS';
+    if(t==='push')return '右へ：'+band;
+    if(t==='muri')return 'もっと右へ：'+band+'（海苔'+z.noriCap+'未満）';
+    if(t==='quiet')return '左へ：'+band;
+    if(t==='release')return 'RELEASEを緑の範囲に入れて枠キープ';
+    return '上へ：山 '+(Number.isFinite(z.mFloor)?z.mFloor.toFixed(1):'—')+' dB 以上';
+  }
+  var PREP = { push:'GAINを上げる準備を', punch:'GAINを控えめにして音圧を枠の左寄りへ', quiet:'静かな所で音圧を追いかけない',
+    release:'RELEASEを緑の範囲へ', muri:'GAINを大きく上げ、RELEASEを緑の範囲にして海苔を抑える' };
+  function renderPerformance(lufs,crest){
+    if(!run)return;
+    var z=zoneAt(gameChart,run.time,run.index), m=gameChart.missions[run.index];
+    var title='通常区間', timer='', detail='点を緑の枠へ。枠の中心ほど高得点。', progress=0, state='normal';
+    if(z.mission){
+      state='active';title=m.name;timer='残り '+Math.max(0,m.end-run.time).toFixed(1)+'秒';
+      var blocks=missionBlocks(z);
+      detail='オレンジ枠 '+missionText(z)+'\n達成 '+Math.min(run.hits,CHALLENGE.required).toFixed(1)+' / '+CHALLENGE.required.toFixed(1)+'秒'
+        +(blocks.length?'　⚠ 条件未達：'+blocks.join('・'):'');
+      progress=clamp(run.hits/CHALLENGE.required,0,1);
+      if(run.hits+1e-8>=CHALLENGE.required){title+=' ✓';detail='クリア！ このまま保つと追加点';}
+    }else if(m && m.start-run.time<=CHALLENGE.preview){
+      var next=zoneAt(gameChart,m.start+1e-3,run.index);
+      state='preview';title='次は '+m.name;timer=Math.max(0,m.start-run.time).toFixed(1)+'秒後';
+      detail='次の枠 '+missionText(next)+'\n'+PREP[m.type];
+    }else if(run.lastResult && run.time<run.lastResult.until){
+      var result=run.lastResult;state=result.success?'success':'normal';
+      title=result.success?'課題クリア！ +'+result.reward+'点':'課題終了';
+      detail=result.success?'次の見せ場まで、安定ボーナスを狙おう':'あと '+Math.max(0,CHALLENGE.required-result.hits).toFixed(1)+'秒。通常点はそのまま。';
+    }else if(m){timer='次の課題 '+Math.ceil(m.start-run.time)+'秒後';}
+    else {title='最後まで気楽にキープ';}
+    $('performance').dataset.state=state;
+    putText('missionTitle',title);putText('missionTimer',timer);putText('missionDetail',detail);
+    $('missionProgress').style.width=progress*100+'%';
+    // A countdown is not achievement: only a live mission displays its progress bar.
+    $('missionTrack').hidden=state!=='active';
+    $('missionTrack').classList.toggle('blocked',state==='active'&&missionBlocks(z).length>0);
+    // RELEASE fader: highlight and mark the required value during the preview and the live challenge.
+    var relZ=z.mission?z:(state==='preview'?zoneAt(gameChart,m.start+1e-3,run.index):null), needRel=relZ&&relZ.needRel||0;
+    var relFader=relEl.closest('.fader');
+    var needBand=!!(relZ&&relZ.needBand), bandNow=relBandAt(gameChart,run.time);
+    relFader.classList.toggle('need',!!needRel||needBand);
+    relFader.classList.toggle('ok',(!!needRel&&parseFloat(relEl.value)>=needRel)||(needBand&&inRelBand(parseFloat(relEl.value),bandNow)));
+    $('relNeed').hidden=!needRel;
+    if(needRel){$('relNeed').style.left=((needRel-5)/395*100)+'%';putText('relNeedLab',needRel+'ms↑');}
+    $('stabilityTrack').hidden=state==='preview';
+    // The LUFS meter shows the x-projection only; a "leave peaks" challenge lives on the y-axis.
+    var pushNow=z.mission&&z.mHi-z.mLo<z.hi-z.lo-0.01;   // challenges that narrow the loudness range
+    $('missionBand').hidden=!pushNow;
+    if(pushNow){
+      $('missionBand').style.left=clamp((z.mLo+30)/30,0,1)*100+'%';
+      $('missionBand').style.width=(z.mHi-z.mLo)/30*100+'%';
+    }
+    var floor=z.mission?Math.max(z.floor,z.mFloor):z.floor;
+    var hint='点を緑の枠へ';
+    if(nori>=65)hint='海苔を65未満へ：上へ戻そう';
+    else if(z.mission&&z.noriCap&&nori>=z.noriCap)hint='海苔を'+z.noriCap+'未満へ';
+    else if(z.mission&&z.needRel&&parseFloat(relEl.value)<z.needRel)hint='RELEASEを'+z.needRel+'ms以上へ';
+    else if(Number.isFinite(lufs)){
+      if(lufs<z.lo)hint='音圧不足：GAIN↑で右へ';
+      else if(lufs>z.hi)hint='音圧過多：GAIN↓で左へ';
+      else if(z.mission&&lufs>z.mHi)hint='オレンジ枠へ：GAIN↓で左へ';
+      else if(z.mission&&lufs<z.mLo)hint='オレンジ枠へ：GAIN↑で右へ';
+      else if(Number.isFinite(floor)&&Number.isFinite(crest)&&crest<floor)hint='山不足：GAIN↓で上へ';
+      else hint=run.rate>=23.99?'いい調子！':'ボーナス充電中';
+    }
+    putText('precisionHint',hint);putText('precisionRate','+'+Math.floor(run.rate)+'点/秒');
+    putText('precisionRange','枠 '+rangeText(z.cx,z.hx)+(Number.isFinite(z.floor)?' × 山 '+z.floor.toFixed(1)+' dB↑':''));
+    $('precisionCharge').style.width=Math.min(1,run.hold/CHALLENGE.charge)*100+'%';
+    var band=relBandAt(gameChart,run.time), rv=parseFloat(relEl.value), ok=inRelBand(rv,band);
+    if(band){
+      $('relBand').hidden=false;
+      $('relBand').style.left=((band.lo-5)/395*100)+'%';$('relBand').style.width=((band.hi-band.lo)/395*100)+'%';
+      putText('relBandLab','適正 '+band.lo+'〜'+band.hi+'ms');
+      $('relBandLab').classList.toggle('off',!ok);relEl.parentNode.classList.toggle('off',!ok);
+      if(!ok && noriRate>0.05 && hint!=='海苔を65未満へ：上へ戻そう'){hint=rv<band.lo?'RELEASE短すぎ（歪み）：緑の範囲へ':'RELEASE長すぎ（ポンピング）：緑の範囲へ';putText('precisionHint',hint);}
+    }
+  }
+
+  /* ----- radar drawing ----- */
+  var xyCvs=null, xyG=null, xyW=0, xyH=0, xyTrail=[], xyDirty=false, xyRange=null;
+  function radarRange(chart){
+    var ts=chart.demands.map(function(d){return d.target;}), fl=[];
+    chart.zone.floor.concat(chart.zone.punch,chart.zone.nori).forEach(function(v){if(Number.isFinite(v))fl.push(v);});
+    var yLo=fl.length?Math.min.apply(null,fl)-2:2, yHi=fl.length?Math.max.apply(null,fl)+3:16;
+    return {x0:Math.min.apply(null,ts)-3.5,x1:Math.max.apply(null,ts)+4.5,y0:Math.max(0,yLo),y1:Math.max(yHi,yLo+6)};
+  }
+  function resizeXY(){
+    if(!xyCvs)return;
+    var r=xyCvs.getBoundingClientRect();if(!r.width)return;
+    xyW=Math.round(r.width);xyH=Math.round(r.height);
+    xyCvs.width=Math.round(xyW*dpr);xyCvs.height=Math.round(xyH*dpr);
+    xyG.setTransform(dpr,0,0,dpr,0,0);xyDirty=true;
+  }
+  function drawXY(){
+    var g2=xyG,W=xyW,H=xyH;if(!g2||!W||!run||!gameChart)return;
+    var R=xyRange,pl=18,pr=6,pt=6,pb=15,pw=W-pl-pr,ph=H-pt-pb;
+    function px(L){return pl+clamp((L-R.x0)/(R.x1-R.x0),0,1)*pw;}
+    function py(c){return pt+(1-clamp((c-R.y0)/(R.y1-R.y0),0,1))*ph;}
+    g2.clearRect(0,0,W,H);
+    g2.fillStyle='#0a0f0b';g2.fillRect(0,0,W,H);
+    var z=zoneAt(gameChart,run.time,run.index), m=gameChart.missions[run.index];
+    // nori zone
+    if(Number.isFinite(z.nori)){
+      var ny=py(z.nori);
+      g2.fillStyle=COL_NORI;g2.fillRect(pl,ny,pw,pt+ph-ny);
+      g2.strokeStyle=COL_NORI_FLECK;g2.setLineDash([3,3]);g2.beginPath();g2.moveTo(pl,ny+.5);g2.lineTo(pl+pw,ny+.5);g2.stroke();g2.setLineDash([]);
+      // build band: between the line and line+neutral the gauge slowly fills
+      var by=py(z.nori+NORI.neutral);
+      var grad=g2.createLinearGradient(0,by,0,ny);grad.addColorStop(0,'rgba(63,122,85,0)');grad.addColorStop(1,'rgba(63,122,85,.45)');
+      g2.fillStyle=grad;g2.fillRect(pl,by,pw,ny-by);
+      if(pt+ph-ny>10){g2.fillStyle='#6fae83';g2.font='600 9px '+getComputedStyle(document.body).fontFamily;g2.fillText('海苔',pl+3,pt+ph-3);}
+    }
+    // green box (open to the top: more peak at the same loudness is never wrong)
+    var gy=Number.isFinite(z.floor)?py(z.floor):pt+ph;
+    g2.fillStyle='rgba(143,224,106,.16)';g2.fillRect(px(z.lo),pt,px(z.hi)-px(z.lo),gy-pt);
+    g2.strokeStyle='#b9ff9b';g2.lineWidth=1.5;g2.strokeRect(px(z.lo),pt,px(z.hi)-px(z.lo),gy-pt);
+    g2.lineWidth=1;g2.strokeStyle='rgba(185,255,155,.45)';g2.setLineDash([2,3]);
+    g2.beginPath();g2.moveTo(px(z.cx)+.5,pt);g2.lineTo(px(z.cx)+.5,gy);g2.stroke();g2.setLineDash([]);
+    // orange box (live) or dashed outline (preview)
+    var oz=z.mission?z:(m&&m.start-run.time<=CHALLENGE.preview?zoneAt(gameChart,m.start+1e-3,run.index):null);
+    if(oz&&oz.mission){
+      var oy=Number.isFinite(oz.mFloor)?py(Math.max(oz.mFloor,Number.isFinite(oz.floor)?oz.floor:-Infinity)):pt+ph;
+      var ox=px(oz.mLo),ow=px(oz.mHi)-ox;
+      var blocks=z.mission?missionBlocks(z):[];
+      if(z.mission&&!blocks.length){g2.fillStyle='rgba(242,166,59,.38)';g2.fillRect(ox,pt,ow,oy-pt);}
+      else if(z.mission){g2.fillStyle='rgba(150,150,150,.22)';g2.fillRect(ox,pt,ow,oy-pt);}
+      if(!z.mission||blocks.length)g2.setLineDash([4,3]);
+      g2.strokeStyle=blocks.length?'#a9a9a9':COL_AMBER;g2.lineWidth=2;g2.strokeRect(ox,pt,ow,oy-pt);g2.setLineDash([]);g2.lineWidth=1;
+      if(blocks.length){
+        // name the missing condition right on the box (wrapped to the box width when it is narrow)
+        g2.font='600 10px '+getComputedStyle(document.body).fontFamily;g2.textBaseline='top';
+        var lines=blocks.map(function(t){return '⚠'+t;}), lx=ox, lw=Math.max(ow,10);
+        lines.forEach(function(t,i){
+          var tw=g2.measureText(t).width, tx=clamp(lx+lw/2-tw/2,2,W-tw-2), ty=pt+3+i*13;
+          g2.fillStyle='rgba(10,15,11,.85)';g2.fillRect(tx-3,ty-1,tw+6,13);
+          g2.fillStyle='#ffd489';g2.fillText(t,tx,ty);
+        });
+        g2.textBaseline='alphabetic';
+      }
+    }
+    // axes
+    g2.fillStyle='rgba(190,206,192,.7)';g2.font='9px '+getComputedStyle(document.body).fontFamily;
+    g2.fillText('音圧→',W-pr-30,H-4);g2.fillText(R.x0.toFixed(0),pl,H-4);
+    g2.fillText('山',4,pt+9);g2.fillText('↑',5,pt+20);
+    // trail and dot
+    for(var i=0;i<xyTrail.length;i++){
+      var p=xyTrail[i];g2.fillStyle='rgba(255,212,137,'+(0.08+0.4*i/xyTrail.length)+')';
+      g2.fillRect(px(p.L)-1.5,py(p.c)-1.5,3,3);
+    }
+    var last=xyTrail[xyTrail.length-1];
+    if(last){
+      var inZ=last.L>=z.lo&&last.L<=z.hi&&!(last.c<z.floor), sunk=last.c<z.nori;
+      var dx=px(last.L),dy=py(last.c);
+      g2.fillStyle=sunk?'#ff6a55':inZ?'#b9ff9b':COL_AMBER_CORE;
+      g2.shadowColor=g2.fillStyle;g2.shadowBlur=8;
+      g2.beginPath();g2.arc(dx,dy,4,0,Math.PI*2);g2.fill();g2.shadowBlur=0;
+    }
+  }
+
+
+  /* ============ dom ============ */
+  var $ = function(id){ return document.getElementById(id); };
+  var scopeBox = $("scopeBox"), cvs = $("scope"), g = cvs.getContext("2d");
+  var lamp = $("lamp"), bubble = $("bubble");
+  var hudTarget = $("hudTarget"), hudTime = $("hudTime");
+  var scrStart = $("scrStart"), scrOver = $("scrOver"), scrResult = $("scrResult");
+  var vLufs = $("vLufs"), fLufs = $("fLufs"), kLufs = $("kLufs");
+  var vCrest = $("vCrest"), fCrest = $("fCrest");
+  var vPeak = $("vPeak"), fPeak = $("fPeak"), mPeak = $("mPeak");
+  var vNori = $("vNori"), fNori = $("fNori");
+  var gainEl = $("gain"), relEl = $("rel"), vGain = $("vGain"), vRel = $("vRel");
+  var playBtn = $("playBtn"), startBtn = $("startBtn");
+  var srcName = $("srcName"), bootMsg = $("bootMsg"), vScore = $("vScore");
+  xyCvs = $("xy"); xyG = xyCvs.getContext("2d");
+
+  /* ============ audio graph ============ */
+  var TRACKS = {
+    track01: { url: "track01.mp3", name: "ノーマライズ",       genre: "J-HARDCORE",   glob: "NORI_TRACK" },
+    track02: { url: "track02.mp3", name: "ごめんね、のりです。", genre: "IDOL CITY POP", glob: "NORI_TRACK2" },
+    track03: { url: "track03.mp3", name: "ノリハケイシグナル",   genre: "J-POP",        glob: "NORI_TRACK3" },
+    track04: { url: "track04.mp3", name: "NORI WAVE",          genre: "FULLON",       glob: "NORI_TRACK4" },
+    track05: { url: "track05.mp3", name: "DAI-PAN",            genre: "JERSEY CLUB",  glob: "NORI_TRACK5" },
+    track06: { url: "track06.mp3", name: "のりのりNightmare",  genre: "CHIPTUNE",     glob: "NORI_TRACK6" }
+  };
+  // 課題を手作りしたい場合は各曲に chart:[{t:秒, type:'push'|'punch'|'quiet'|'release'|'muri'}, ...] を追加する。
+  // 未指定なら曲のエネルギー変化から自動生成。
+  var CLIENTS = {
+    track01: { who:"同人サークル主宰", hello:"爆音で頼みます！でも潰しすぎはNGで", muri:"やっぱ即売会はもっと爆音じゃないと！" },
+    track02: { who:"アイドル事務所P",  hello:"ファンのイヤホンで映えるようにお願いします♪", muri:"他のグループに負けたくないの、もっと大きく！" },
+    track03: { who:"レーベルA&R",      hello:"配信メインなので、上品にお願いします", muri:"すみません、上から『もっと音圧』って…" },
+    track04: { who:"パーティーオーガナイザー", hello:"フロアを揺らしたい。キックは生かしてね", muri:"ピークタイム用にもう一段アゲて！" },
+    track05: { who:"ダンス動画クリエイター", hello:"スマホで聴いても跳ねる感じでお願いします！", muri:"バズらせたいんで、もっとデカく！" },
+    track06: { who:"インディーゲーム開発者", hello:"ゲームのBGMなので、ループで聴き続けても疲れない音でお願いします", muri:"トレーラー用に、ここだけ派手にしたいです！" },
+    demo:    { who:"Client", hello:"よろしくお願いします！", muri:"もっと音圧いけます？" }
+  };
+  var LINES = {
+    // 課題の位置は音量の変化から自動で決めるため、サビ・ブレイクなど曲の構成を断定する言い方はしない。
+    preview:{ push:"次のところ、グッと音圧を上げてほしいです！", punch:"次は音の山（アタック）を残したいな", quiet:"次の静かなパートは、静かなまま聴かせたいです",
+      release:"ここ、リリースを曲のノリに合わせてほしいです" },
+    success:["いいね！その感じ！","完璧です！","おお、分かってますね〜","そうそう、それです！"],
+    muriSuccess:"すごい、あの音圧で潰れてない…！",
+    fail:["うーん、ちょっと違うかな…","もう少し粘ってほしかったです","次はお願いしますよ？"],
+    muriFail:"まあ…無茶言いましたね。",
+    nori40:"なんか音が平べったくない？", nori65:"これ、海苔になってません!?",
+    over:"ちょっと歪んでる気がする…", under:"もうちょい迫力ほしいです",
+    happy:"今の感じ、最高です", moodLow:"このままだとリテイクかな…", last:"ラストまで頼みます！"
+  };
+  // Decides when the client speaks. Reads game state only; never touches the score.
+  function ClientDirector(persona){
+    this.p=persona;this.lastAt=-99;this.previewed=-1;this.results=0;this.flags={};this.overT=0;this.underT=0;this.pick=0;
+  }
+  ClientDirector.prototype.say=function(t,text,priority){
+    if(!priority&&t-this.lastAt<8)return;
+    this.lastAt=t;showBubble(text,this.p.who);
+  };
+  ClientDirector.prototype.update=function(run,z,lufs,dt){
+    var t=run.time,f=this.flags,m=run.chart.missions[run.index];
+    if(!f.hello&&t>1){f.hello=true;this.say(t,this.p.hello,true);return;}
+    if(run.results.length>this.results){
+      this.results=run.results.length;var r=run.lastResult,muri=r.type==='muri';
+      this.say(t,r.success?(muri?LINES.muriSuccess:LINES.success[this.pick++%LINES.success.length]):(muri?LINES.muriFail:LINES.fail[this.pick++%LINES.fail.length]),true);
+      return;
+    }
+    if(m&&this.previewed<run.index&&m.start-t<=CHALLENGE.preview){
+      this.previewed=run.index;this.say(t,m.type==='muri'?this.p.muri:LINES.preview[m.type],true);return;
+    }
+    if(nori>=65&&!f.n65){f.n65=f.n40=true;this.say(t,LINES.nori65,true);return;}
+    if(nori>=40&&!f.n40){f.n40=true;this.say(t,LINES.nori40);return;}
+    if(nori<20)f.n40=f.n65=false;
+    this.overT=Number.isFinite(lufs)&&lufs>z.hi+0.5?this.overT+dt:0;
+    this.underT=Number.isFinite(lufs)&&lufs<z.lo&&t>6?this.underT+dt:0;
+    if(this.overT>4){this.overT=0;this.say(t,LINES.over);return;}
+    if(this.underT>6){this.underT=0;this.say(t,LINES.under);return;}
+    if(run.mood<35&&!f.low){f.low=true;this.say(t,LINES.moodLow);return;}
+    if(run.mood>50)f.low=false;
+    if(run.hold>12&&t-(f.happyAt||-99)>30){f.happyAt=t;this.say(t,LINES.happy);return;}
+    if(!f.last&&run.chart.duration-t<10){f.last=true;this.say(t,LINES.last);}
+  };
+  var director=null;
+  function moodFace(v){return v>=75?"😄":v>=MOOD.ok?"🙂":v>=MOOD.retake?"😐":"😠";}
+  function renderMood(){
+    if(!run)return;
+    var v=Math.round(run.mood);
+    putText('clientFace',moodFace(v));putText('clientMood','機嫌 '+v);
+    var bar=$('clientBar');bar.style.width=v+'%';
+    bar.style.backgroundColor=v>=MOOD.ok?'#92da89':v>=MOOD.retake?'#f2a63b':'#cc3b2a';
+  }
+
+  /* ----- feel: sound effects, popups, combo, nori fog, gain reduction ----- */
+  var seOn=true, seBus=null, fx=null;
+  try{seOn=localStorage.getItem("ng1.se")!=="off";}catch(e){}
+  // Effects go straight to the speakers: they never pass the limiter or the meters, so they cannot affect scoring.
+  function blip(freq,at,len,type,vol,slideTo){
+    if(!seOn||!ctx)return;
+    if(!seBus){seBus=ctx.createGain();seBus.gain.value=0.5;seBus.connect(ctx.destination);}
+    var t=ctx.currentTime+(at||0),o=ctx.createOscillator(),g=ctx.createGain();
+    o.type=type||"sine";o.frequency.setValueAtTime(freq,t);
+    if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,t+len);
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol||0.12,t+0.008);g.gain.exponentialRampToValueAtTime(0.0001,t+len);
+    o.connect(g).connect(seBus);o.start(t);o.stop(t+len+0.02);
+  }
+  var SE={
+    tick:function(){blip(880,0,0.07,"sine",0.1);},
+    go:function(){blip(1320,0,0.16,"triangle",0.14);blip(1760,0.05,0.14,"sine",0.07);},
+    clear:function(){[660,880,1320].forEach(function(f,i){blip(f,i*0.07,0.18,"triangle",0.13);});},
+    fail:function(){blip(440,0,0.28,"square",0.05,300);},
+    combo:function(){blip(1175,0,0.06,"sine",0.08);blip(1568,0.07,0.09,"sine",0.08);},
+    warn:function(){blip(110,0,0.22,"sawtooth",0.07);blip(110,0.3,0.22,"sawtooth",0.07);}
+  };
+  function popText(text,sub,cls){
+    var el=$("pop");el.className="pop";el.textContent=text;
+    if(sub){var sm=document.createElement("small");sm.textContent=sub;el.appendChild(sm);}
+    void el.offsetWidth;el.className="pop show"+(cls?" "+cls:"");
+  }
+  function pulseClass(el,cls,ms){el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);setTimeout(function(){el.classList.remove(cls);},ms);}
+  function fxClear(){
+    $("pop").className="pop";$("combo").classList.remove("on");$("noriFog").style.opacity=0;
+    $("mNori").classList.remove("danger");$("fGR").style.width="0%";putText("vGR","0.0 dB");
+  }
+  function Fx(){this.results=0;this.count="";this.nextCombo=10;this.warned=false;this.gr=0;}
+  Fx.prototype.update=function(run,dt){
+    var m=run.chart.missions[run.index],t=run.time;
+    // 3-2-1-START before each challenge
+    if(m){
+      var left=Math.ceil(m.start-t-1e-6);
+      if(left>=1&&left<=3&&this.count!==run.index+":"+left){this.count=run.index+":"+left;SE.tick();popText(String(left));}
+      if(t>=m.start&&this.count!==run.index+":go"){this.count=run.index+":go";SE.go();popText("START!",m.name);pulseClass(scopeBox,"flash",350);}
+    }
+    if(run.results.length>this.results){
+      this.results=run.results.length;var r=run.lastResult;
+      if(r.success){SE.clear();popText("+"+r.reward,"CLEAR!","good");pulseClass(document.querySelector(".score"),"bump",500);}
+      else{SE.fail();popText("MISS","課題終了","bad");}
+    }
+    // combo = uninterrupted time inside the zone (the same streak that charges the stability bonus)
+    var combo=run.hold;
+    $("combo").classList.toggle("on",combo>=3);
+    putText("comboN",String(Math.floor(combo)));
+    var countdown=m&&m.start-t<=3.5&&m.start-t>-1;   // keep 3-2-1 readable; the milestone waits
+    if(combo>=this.nextCombo&&!countdown){SE.combo();popText("COMBO "+this.nextCombo,"","good");this.nextCombo+=10;}
+    else if(combo<1)this.nextCombo=10;
+    // nori danger: the scope clouds over, the meter pulses, a buzzer sounds once per crossing
+    if(nori>=65&&!this.warned){this.warned=true;SE.warn();}
+    if(nori<50)this.warned=false;
+    $("noriFog").style.opacity=clamp((nori-30)/70,0,1)*0.8;
+    $("mNori").classList.toggle("danger",nori>=65);
+    // gain reduction from the real limiter; instant rise, slow fall so it stays readable
+    var red=0;
+    if(lim){var rv=lim.reduction;red=Math.max(0,-(typeof rv==="number"?rv:(rv&&rv.value)||0));}
+    this.gr=red>this.gr?red:this.gr+(red-this.gr)*(1-Math.exp(-dt*4));
+    $("fGR").style.width=clamp(this.gr/12,0,1)*100+"%";
+    putText("vGR",(this.gr>=0.05?"−":"")+this.gr.toFixed(1)+" dB");
+  };
+
+  function trackLabel(key){ var d = TRACKS[key]; return d.name + " (" + d.genre + ")"; }
+  function currentPar(){ return gameChart ? gameChart.maxScore : 1; }
+
+  var selectedKey = "track02";        // 初回に選択しておく曲
+  var bufCache = {}, pendCache = {};  // 課題曲のデコード済みバッファ / 読込中Promise
+
+  var ctx = null, srcNode = null, inGain = null, lim = null, shaper = null, outGain = null;
+  var meterNode = null, meterReady = null, hp = null, hs = null;
+  var track = null, trackName = trackLabel("track01"), demoBuf = null, demoPending = null;
+
+  function db(v){ return 20 * Math.log10(Math.max(v, 1e-7)); }
+  function clamp(v,a,b){ return v < a ? a : (v > b ? b : v); }
+
+  function clipCurve(ceil){
+    var n = 2048, c = new Float32Array(n);
+    for (var i = 0; i < n; i++){
+      var x = (i / (n - 1)) * 2 - 1;
+      c[i] = clamp(x, -ceil, ceil);
+    }
+    return c;
+  }
+
+  function ensureCtx(){
+    if (ctx) return ctx;
+    var AC = window.AudioContext || window.webkitAudioContext;
+    try { ctx = new AC({ sampleRate: 44100, latencyHint: "interactive" }); }
+    catch (e){ ctx = new AC(); }
+
+    inGain = ctx.createGain();
+
+    lim = ctx.createDynamicsCompressor();
+    lim.threshold.value = -1.0;
+    lim.knee.value = 0;
+    lim.ratio.value = 20;
+    lim.attack.value = 0.002;
+    lim.release.value = 0.12;
+
+    shaper = ctx.createWaveShaper();
+    shaper.curve = clipCurve(CEIL);
+    shaper.oversample = "2x";
+
+    outGain = ctx.createGain();
+
+
+    // K-weighting-ish measurement branch
+    hp = ctx.createBiquadFilter();
+    hp.type = "highpass"; hp.frequency.value = 60; hp.Q.value = 0.5;
+    hs = ctx.createBiquadFilter();
+    hs.type = "highshelf"; hs.frequency.value = 1500; hs.gain.value = 4;
+
+
+    inGain.connect(lim).connect(shaper).connect(outGain);
+    outGain.connect(hp).connect(hs);
+    outGain.connect(ctx.destination);
+    return ctx;
+  }
+
+  function acceptMeter(m){
+    if (mode === "play" && m.token === runToken && !document.hidden) measure(m);
+  }
+  var lastShape=null;
+  var liveObserver=null, observerReady=null, observerInput=null, observerProcessor=null;
+  function observeShape(a){var sq=0,peak=0;for(var i=0;i<a.length;i++){sq+=a[i]*a[i];peak=Math.max(peak,Math.abs(a[i]))}var rms=Math.sqrt(sq/a.length);return {rms:rms,peak:peak,crest:peak>1e-8?db(peak)-db(rms):0}}
+  function observeGap(a,rms){var quiet=0;for(var k=0;k<50;k++){var lo=Math.floor(k*a.length/50),hi=Math.floor((k+1)*a.length/50),sq=0;for(var i=lo;i<hi;i++)sq+=a[i]*a[i];if(Math.sqrt(sq/Math.max(1,hi-lo))<rms*.5)quiet++}return rms<1e-8?100:quiet*2}
+  function LiveObserver(rate){this.size=Math.round(rate*.25);this.before=new Float32Array(this.size);this.after=new Float32Array(this.size);this.reset()}
+  LiveObserver.prototype.reset=function(){this.pos=0;this.compressionRun=0;this.run=0;this.clean=0;this.warning=false};
+  LiveObserver.prototype.feed=function(before,after,callback){for(var i=0;i<before.length;i++){this.before[this.pos]=before[i];this.after[this.pos]=after[i];if(++this.pos===this.size){this.pos=0;var p=observeShape(this.before),q=observeShape(this.after),drop=p.crest-q.crest,compression=db(p.rms)>-50&&drop>=2&&q.crest<=7,pg=observeGap(this.before,p.rms),qg=observeGap(this.after,q.rms),hit=compression&&qg<=10&&pg-qg>=10;this.compressionRun=compression?this.compressionRun+.25:0;if(hit){this.run+=.25;this.clean=0;if(this.run>=.75)this.warning=true}else{this.run=0;this.clean+=.25;if(this.clean>=.5)this.warning=false}callback({before:p,after:q,drop:drop,beforeGap:pg,afterGap:qg,compressionRun:this.compressionRun,run:this.run,state:this.warning?(hit?'warning':'recovering'):(hit?'pending':'clear')},this.before,this.after)}}};
+
+  // 海苔は「管理するゲージ」。海苔ラインからの余裕(headroom = クレスト − ライン)で増減する。
+  //   ライン未満 … 沈んでいる。急増(3〜15/秒)
+  //   0〜neutral … 攻めている(枠の下のほう＝音圧側)。じわじわ増える(最大3/秒)
+  //   neutral以上 … 余裕あり。回復(1〜4/秒)
+  // 通常のデフォルト設定で枠の中心にいると、ほぼ増減なし(neutral付近)になるよう校正済み。
+  // centre: headroom above neutral at the box centre with the best release (+ = centre recovers, − = centre builds)
+  var NORI = { neutral:2.4, centre:0.1, build:6, sinkMin:3, sinkMax:10, sinkSpan:3, decayMin:2, decayMax:6, decaySlope:2, relWarn:2 };
+  var noriRate = 0;
+  // RELEASE = distortion vs. cleanliness. Short release squeezes more loudness out of the same GAIN but
+  // distorts, so nori builds faster; long release is clean (builds slower) but needs more GAIN for the same loudness.
+  // (Measured: at equal loudness the 1 s crest is the same for any release, so release cannot "lift the peaks".)
+  var REL = { ref:120, slope:0.3, min:0.6, max:1.6 };
+  // Variant: inside the band nori builds slowest; shorter = distortion, longer = pumping, both build faster.
+  var curRelBand=null;
+  function releaseFactor(ms){
+    var b=curRelBand; if(!b) return 1;
+    var d=Math.log2(Math.max(ms,1)/b.ideal), dl=Math.log2(RELBAND.lo), dh=Math.log2(RELBAND.hi);
+    if(d<dl) return Math.min(1.8,0.7+0.5*(dl-d));     // 短すぎ：歪み
+    if(d>dh) return Math.min(1.6,0.7+0.45*(d-dh));    // 長すぎ：ポンピング
+    return 0.7;
+  }
+  function noriRateFor(headroom){
+    if(headroom<=0) return NORI.sinkMin+(NORI.sinkMax-NORI.sinkMin)*Math.min(1,-headroom/NORI.sinkSpan);
+    if(headroom<NORI.neutral) return NORI.build*(1-headroom/NORI.neutral);
+    return -Math.min(NORI.decayMax,NORI.decayMin+(headroom-NORI.neutral)*NORI.decaySlope);
+  }
+  function shapeHeat(m,value){
+    var out=m.after, loud=out && db(out.rms) > -22;              // 十分な音量のある区間のみ判定
+    var line=curZone ? curZone.nori : NaN;                       // レーダーの海苔ライン(曲ごとに校正)
+    var judged=loud && Number.isFinite(line) && Number.isFinite(crest1s);
+    var rate=judged ? noriRateFor(crest1s-line) : -NORI.decayMax;
+    if(m.state==='warning' && m.run>=0.5) rate+=NORI.relWarn;   // ソース比の劣化(本来の海苔化)も上乗せ
+    if(rate>0) rate*=releaseFactor(parseFloat(relEl.value));   // 短いRELEASEほど歪んでたまりやすい
+    m.headroom=judged ? crest1s-line : NaN;
+    noriRate=rate;
+    return clamp(value + rate*0.25, 0, 100);
+  }
+  function showObserver(m){lastShape=m;nori=shapeHeat(m,nori);
+    var sunk=m.headroom<=0, building=noriRate>0.05;
+    putText('shapeStatus',sunk?'海苔ゾーンに沈んでいます':building?'海苔がたまっています':nori>1?'海苔を回復中':'波形は保たれています');
+    putText('shapeHint',sunk?'GAIN↓で上へ戻そう':building?(curRelBand&&!inRelBand(parseFloat(relEl.value),curRelBand)?'RELEASEが緑の範囲外：合わせるとたまりにくい':'上へ余裕を作ると回復'):'山を残せています');
+  }
+  function resetObserver(){lastShape=null;noriRate=0;if(liveObserver)liveObserver.reset();putText('shapeStatus','開始後に波形を判定');putText('shapeHint','GAINで音圧、RELEASEで歪み（海苔のたまり方）を調整');}
+  async function prepareObserver(){if(observerReady)return observerReady;observerReady=(async function(){
+    var oc=new OfflineAudioContext(1,Math.ceil(ctx.sampleRate*.1),ctx.sampleRate),pulse=oc.createBuffer(1,Math.ceil(ctx.sampleRate*.1),ctx.sampleRate),at=Math.round(ctx.sampleRate*.01);pulse.getChannelData(0)[at]=.01;
+    var s=oc.createBufferSource();s.buffer=pulse;var comp=oc.createDynamicsCompressor();comp.threshold.value=-1;comp.knee.value=0;comp.ratio.value=20;comp.attack.value=.002;comp.release.value=.12;var clip=oc.createWaveShaper();clip.curve=clipCurve(CEIL);clip.oversample='2x';s.connect(comp).connect(clip).connect(oc.destination);s.start();var a=(await oc.startRendering()).getChannelData(0),peak=0;for(var i=0;i<a.length;i++)if(Math.abs(a[i])>Math.abs(a[peak]))peak=i;var delay=(peak-at)/ctx.sampleRate;if(delay<0||delay>.03)throw Error('時間補正を測定できません');
+    observerInput=ctx.createGain();observerInput.channelCount=1;observerInput.channelCountMode='explicit';var align=ctx.createDelay(.1);align.delayTime.value=delay;var post=ctx.createGain();post.channelCount=1;post.channelCountMode='explicit';var merge=ctx.createChannelMerger(2);observerInput.connect(align).connect(merge,0,0);outGain.connect(post).connect(merge,0,1);observerProcessor=ctx.createScriptProcessor(2048,2,1);merge.connect(observerProcessor);observerProcessor.connect(ctx.destination);liveObserver=new LiveObserver(ctx.sampleRate);observerProcessor.onaudioprocess=function(e){e.outputBuffer.getChannelData(0).fill(0);if(mode!=='play'||document.hidden)return;liveObserver.feed(e.inputBuffer.getChannelData(0),e.inputBuffer.getChannelData(1),showObserver)};
+  })().catch(function(e){observerReady=null;throw e;});return observerReady}
+
+  function prepareMeter(){
+    if (meterReady) return meterReady;
+    meterReady = Promise.resolve().then(function(){
+      if (!ctx.audioWorklet) throw new Error("worklet unavailable");
+      var code = `class GameMeter extends AudioWorkletProcessor {
+        constructor(){ super(); this.token=0; this.clear(); this.port.onmessage=e=>{this.token=e.data;this.clear();}; }
+        clear(){this.n=0;this.sq=0;this.ksq=0;this.mx=-2;this.mn=2;}
+        process(inputs){
+          const a=inputs[0]&&inputs[0][0], k=inputs[1]&&inputs[1][0];
+          if(!a||!k)return true;
+          for(let i=0;i<a.length;i++){
+            const v=a[i];this.sq+=v*v;this.ksq+=k[i]*k[i];this.mx=Math.max(this.mx,v);this.mn=Math.min(this.mn,v);
+            
+            if(++this.n===1024){this.port.postMessage({token:this.token,n:this.n,sq:this.sq,ksq:this.ksq,mx:this.mx,mn:this.mn});this.clear();}
+          }return true;
+        }
+      } registerProcessor('game-meter',GameMeter);`;
+      var url = URL.createObjectURL(new Blob([code], {type:"text/javascript"}));
+      return ctx.audioWorklet.addModule(url).then(function(){
+        meterNode = new AudioWorkletNode(ctx,"game-meter",{numberOfInputs:2,numberOfOutputs:1,outputChannelCount:[1],channelCount:1,channelCountMode:"explicit"});
+        meterNode.port.onmessage = function(e){ acceptMeter(e.data); };
+        outGain.connect(meterNode,0,0); hs.connect(meterNode,0,1);
+        meterNode.connect(ctx.destination);
+      }).finally(function(){ URL.revokeObjectURL(url); });
+    }).catch(function(){
+      // file:// and older browsers: fixed audio blocks; this branch outputs silence.
+      var raw=ctx.createGain(), weighted=ctx.createGain(), merger=ctx.createChannelMerger(2);
+      raw.channelCount=weighted.channelCount=1;
+      raw.channelCountMode=weighted.channelCountMode="explicit";
+      outGain.connect(raw).connect(merger,0,0); hs.connect(weighted).connect(merger,0,1);
+      meterNode=ctx.createScriptProcessor(1024,2,1);
+      merger.connect(meterNode);meterNode.connect(ctx.destination);
+      meterNode.onaudioprocess=function(e){
+        var a=e.inputBuffer.getChannelData(0), k=e.inputBuffer.getChannelData(1);
+        var m={token:runToken,n:a.length,sq:0,ksq:0,mx:-2,mn:2};
+        for(var i=0;i<a.length;i++){var v=a[i];m.sq+=v*v;m.ksq+=k[i]*k[i];m.mx=Math.max(m.mx,v);m.mn=Math.min(m.mn,v);}
+        e.outputBuffer.getChannelData(0).fill(0);acceptMeter(m);
+      };
+    });
+    return meterReady;
+  }
+
+  /* ============ demo track generator ============ */
+  function buildDemo(sr){
+    var bpm = 100, beat = 60 / bpm, bar = beat * 4, bars = 12;
+    var dur = bar * bars + 1.2;
+    var oc = new OfflineAudioContext(2, Math.ceil(sr * dur), sr);
+    var master = oc.createGain(); master.gain.value = 1; master.connect(oc.destination);
+
+    var nb = oc.createBuffer(1, Math.floor(sr * 1.2), sr);
+    var nd = nb.getChannelData(0);
+    for (var i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+
+    function noise(t, len, type, freq, q, amp, decay){
+      var s = oc.createBufferSource(); s.buffer = nb;
+      var f = oc.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+      var gg = oc.createGain();
+      gg.gain.setValueAtTime(amp, t);
+      gg.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+      s.connect(f); f.connect(gg); gg.connect(master);
+      s.start(t, Math.random() * 0.8); s.stop(t + len);
+    }
+    function kick(t, amp){
+      var o = oc.createOscillator(), gg = oc.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(155, t);
+      o.frequency.exponentialRampToValueAtTime(44, t + 0.09);
+      gg.gain.setValueAtTime(0.0001, t);
+      gg.gain.exponentialRampToValueAtTime(amp, t + 0.005);
+      gg.gain.exponentialRampToValueAtTime(0.0001, t + 0.33);
+      o.connect(gg); gg.connect(master);
+      o.start(t); o.stop(t + 0.4);
+      noise(t, 0.05, "highpass", 2400, 0.7, amp * 0.28, 0.02);
+    }
+    function snare(t, amp){
+      noise(t, 0.22, "bandpass", 1900, 0.7, amp * 0.9, 0.16);
+      var o = oc.createOscillator(), gg = oc.createGain();
+      o.type = "triangle"; o.frequency.setValueAtTime(195, t);
+      gg.gain.setValueAtTime(amp * 0.55, t);
+      gg.gain.exponentialRampToValueAtTime(0.0001, t + 0.085);
+      o.connect(gg); gg.connect(master);
+      o.start(t); o.stop(t + 0.1);
+    }
+    function hat(t, amp, open){
+      noise(t, open ? 0.3 : 0.07, "highpass", 7600, 0.6, amp, open ? 0.22 : 0.035);
+    }
+    function bass(t, len, f, amp){
+      var o = oc.createOscillator(), fl = oc.createBiquadFilter(), gg = oc.createGain();
+      o.type = "sawtooth"; o.frequency.value = f;
+      fl.type = "lowpass"; fl.Q.value = 7;
+      fl.frequency.setValueAtTime(900, t);
+      fl.frequency.exponentialRampToValueAtTime(190, t + Math.min(len, 0.28));
+      gg.gain.setValueAtTime(0.0001, t);
+      gg.gain.exponentialRampToValueAtTime(amp, t + 0.008);
+      gg.gain.exponentialRampToValueAtTime(0.0001, t + len);
+      o.connect(fl); fl.connect(gg); gg.connect(master);
+      o.start(t); o.stop(t + len + 0.02);
+    }
+    function pad(t, len, freqs, amp){
+      var fl = oc.createBiquadFilter(); fl.type = "lowpass"; fl.frequency.value = 1500; fl.Q.value = 0.6;
+      var gg = oc.createGain();
+      gg.gain.setValueAtTime(0.0001, t);
+      gg.gain.linearRampToValueAtTime(amp, t + 0.18);
+      gg.gain.setValueAtTime(amp, t + len - 0.25);
+      gg.gain.exponentialRampToValueAtTime(0.0001, t + len);
+      var pan = oc.createStereoPanner ? oc.createStereoPanner() : null;
+      fl.connect(gg);
+      if (pan){ gg.connect(pan); pan.connect(master); pan.pan.value = (Math.random() - 0.5) * 0.5; }
+      else gg.connect(master);
+      for (var i = 0; i < freqs.length; i++){
+        for (var d = -1; d <= 1; d += 2){
+          var o = oc.createOscillator();
+          o.type = "sawtooth";
+          o.frequency.value = freqs[i] * (1 + d * 0.0035);
+          o.connect(fl); o.start(t); o.stop(t + len + 0.05);
+        }
+      }
+    }
+
+    var chords = [[220,261.63,329.63],[174.61,220,261.63],[196,246.94,329.63],[196,246.94,293.66]];
+    var roots  = [110, 87.31, 98, 98];
+
+    for (var b = 0; b < bars; b++){
+      var t0 = b * bar;
+      var sec = b < 2 ? "intro" : (b < 6 ? "verse" : (b < 10 ? "chorus" : "break"));
+      var a = sec === "intro" ? 0.34 : sec === "verse" ? 0.62 : sec === "chorus" ? 1 : 0.3;
+      var ch = chords[b % 4], rt = roots[b % 4];
+
+      pad(t0, bar, ch, (sec === "chorus" ? 0.1 : sec === "break" ? 0.075 : 0.05));
+
+      if (sec !== "break"){
+        kick(t0, 0.85 * a);
+        kick(t0 + beat * 2, 0.8 * a);
+        if (sec === "chorus") kick(t0 + beat * 2.5, 0.55 * a);
+        if (sec !== "intro"){
+          snare(t0 + beat, 0.55 * a);
+          snare(t0 + beat * 3, 0.58 * a);
+        }
+        for (var e = 0; e < 8; e++){
+          hat(t0 + e * beat * 0.5, (e % 2 ? 0.055 : 0.1) * a, sec === "chorus" && e === 7);
+        }
+        if (sec !== "intro"){
+          for (var n2 = 0; n2 < 8; n2++){
+            if (sec === "verse" && (n2 === 1 || n2 === 5)) continue;
+            bass(t0 + n2 * beat * 0.5, beat * 0.42, rt * (n2 === 6 ? 1.5 : 1), 0.34 * a);
+          }
+        }
+      } else if (b === 11){
+        for (var fq = 0; fq < 4; fq++) snare(t0 + beat * 3 + fq * beat * 0.25, 0.3 + fq * 0.1);
+      }
+    }
+
+    return oc.startRendering().then(function(buf){
+      var peak = 0, c, dch, i2;
+      for (c = 0; c < buf.numberOfChannels; c++){
+        dch = buf.getChannelData(c);
+        for (i2 = 0; i2 < dch.length; i2++){ var av = Math.abs(dch[i2]); if (av > peak) peak = av; }
+      }
+      var k = peak > 0 ? 0.52 / peak : 1;
+      for (c = 0; c < buf.numberOfChannels; c++){
+        dch = buf.getChannelData(c);
+        for (i2 = 0; i2 < dch.length; i2++) dch[i2] *= k;
+      }
+      return buf;
+    });
+  }
+
+  function getDemo(){
+    if (demoBuf) return Promise.resolve(demoBuf);
+    if (!demoPending){
+      demoPending = buildDemo(ctx ? ctx.sampleRate : 44100).then(function(b){ demoBuf = b; return b; });
+    }
+    return demoPending;
+  }
+
+  /* ============ tracks (同フォルダの課題曲) ============ */
+  // fetch は file:// では local file がブロックされるため、
+  // trackNN.data.js に埋め込んだ base64 を fallback に使う。
+  function embeddedArrayBuffer(globName){
+    var t = window[globName];
+    if (!t || !t.b64) return null;
+    var bin = atob(t.b64), len = bin.length, bytes = new Uint8Array(len);
+    for (var i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes.buffer;
+  }
+
+  var embeddedPending = {};
+  function loadEmbedded(key){
+    var def=TRACKS[key];
+    if(window[def.glob]) return Promise.resolve(embeddedArrayBuffer(def.glob));
+    if(!embeddedPending[key]) embeddedPending[key]=new Promise(function(resolve,reject){
+      var script=document.createElement("script");script.src=key+".data.js";
+      script.onload=function(){script.remove();var ab=embeddedArrayBuffer(def.glob);if(ab)resolve(ab);else reject(new Error("音声データがありません"));};
+      script.onerror=function(){script.remove();reject(new Error("音声データを読み込めません"));};
+      document.head.appendChild(script);
+    }).catch(function(e){delete embeddedPending[key];throw e;});
+    return embeddedPending[key];
+  }
+  // Say exactly which file is missing, so a local copy can be fixed without guessing.
+  function loadFailText(key, httpErr, dataErr){
+    var mp3 = TRACKS[key].url, data = key + ".data.js", why;
+    if (dataErr && dataErr.message === "音声データがありません") why = data + " は読めましたが、中身が " + key + " 用ではありません";
+    else if (dataErr && dataErr.name === "EncodingError") why = "音声データを再生できない形式です";
+    else if (location.protocol === "file:") why = "ダブルクリックで開いているため " + mp3 + " は直接読めず、" + data + " も index.html と同じフォルダに見つかりません";
+    else why = mp3 + " を読み込めません（" + (httpErr && httpErr.message || "不明") + "）。" + data + " も見つかりません";
+    return why;
+  }
+  function loadTrack(key){
+    var def = TRACKS[key];
+    if (bufCache[key]) return Promise.resolve(bufCache[key]);
+    ensureCtx();
+    if (!pendCache[key]){
+      if (!chartCache[key]) setProg(key, 0);
+      // まず実ファイルを fetch(http時)。失敗したら埋め込みデータで再生。
+      pendCache[key] = (location.protocol === "file:" ? Promise.reject(new Error("local file")) : fetch(def.url))
+        .then(function(r){ if (!r.ok) throw new Error("HTTP " + r.status); return r.arrayBuffer(); })
+        .then(function(ab){ return ctx.decodeAudioData(ab); })
+        .catch(function(e1){
+          return loadEmbedded(key).then(function(ab){return ctx.decodeAudioData(ab.slice(0));})
+            .catch(function(e2){ throw new Error(loadFailText(key, e1, e2)); });
+        })
+        .then(function(b){ bufCache[key] = b; return b; })
+        .catch(function(e){ pendCache[key] = null; setProg(key, 0, true); throw e; });
+    }
+    return pendCache[key];
+  }
+
+  /* ============ scope ============ */
+  var hist = [], cw = 0, chh = 0, dpr = 1, gridPhase = 0;
+
+  function blankCol(){ return { max:0, min:0, rms:0, crush:0, sp:Math.random() }; }
+
+  function resize(){
+    var r = scopeBox.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cw = Math.max(80, Math.round(r.width));
+    chh = Math.max(80, Math.round(r.height));
+    cvs.width = Math.round(cw * dpr);
+    cvs.height = Math.round(chh * dpr);
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    scopeDirty=true;
+    while (hist.length > cw) hist.shift();
+    while (hist.length < cw) hist.unshift(blankCol());
+    resizeXY();
+  }
+
+  function idleWave(){
+    var s = 987654321;
+    var rnd = function(){ s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+    for (var i = 0; i < hist.length; i++){
+      var t = i / hist.length;
+      var ph = i % 26;
+      var pulse = Math.exp(-ph / 6.5);
+      var body = 0.30 + 0.52 * pulse;
+      var col = hist[i];
+      col.sp = rnd();
+      if (t > 0.46 && t < 0.74){
+        col.max = 0.985 - rnd() * 0.012;
+        col.min = -0.985 + rnd() * 0.012;
+        col.rms = 0.78;
+        col.crush = 0.22;
+      } else {
+        var a = body * (0.72 + 0.3 * rnd());
+        if (t >= 0.74) a *= 0.94;
+        col.max = Math.min(0.96, a);
+        col.min = -Math.min(0.96, a * (0.84 + 0.22 * rnd()));
+        col.rms = a * 0.42;
+        col.crush = 0;
+      }
+    }
+  }
+
+  function drawScope(){
+    var w = cw, h = chh, mid = h / 2, amp = h / 2 - 7;
+    g.fillStyle = "#0b0f0c";
+    g.fillRect(0, 0, w, h);
+
+    // horizontal reference lines (dBFS)
+    g.strokeStyle = "rgba(120,150,128,.14)";
+    g.lineWidth = 1;
+    var marks = [1, 0.5, 0.25];
+    for (var mi = 0; mi < marks.length; mi++){
+      var yy = Math.round(mid - marks[mi] * amp) + 0.5;
+      var yy2 = Math.round(mid + marks[mi] * amp) + 0.5;
+      g.beginPath(); g.moveTo(0, yy); g.lineTo(w, yy);
+      g.moveTo(0, yy2); g.lineTo(w, yy2); g.stroke();
+    }
+    // ceiling
+    g.strokeStyle = "rgba(204,59,42,.4)";
+    g.setLineDash([5, 5]);
+    var cy = Math.round(mid - CEIL * amp) + 0.5;
+    g.beginPath(); g.moveTo(0, cy); g.lineTo(w, cy);
+    g.moveTo(0, h - cy); g.lineTo(w, h - cy); g.stroke();
+    g.setLineDash([]);
+    // centre
+    g.strokeStyle = "rgba(120,150,128,.28)";
+    g.beginPath(); g.moveTo(0, Math.round(mid) + 0.5); g.lineTo(w, Math.round(mid) + 0.5); g.stroke();
+
+    // vertical time grid
+    g.strokeStyle = "rgba(120,150,128,.1)";
+    for (var x = w - (gridPhase % 60); x > 0; x -= 60){
+      var xr = Math.round(x) + 0.5;
+      g.beginPath(); g.moveTo(xr, 0); g.lineTo(xr, h); g.stroke();
+    }
+
+    for (var i = 0; i < hist.length; i++){
+      var c = hist[i];
+      if (!c) continue;
+      var top = mid - c.max * amp;
+      var bot = mid - c.min * amp;
+      var hgt = Math.max(1, bot - top);
+      var nori = c.crush > 0.055;
+
+      g.fillStyle = nori ? COL_NORI_EDGE : (c.crush > 0.008 ? "#b8842f" : COL_AMBER);
+      g.fillRect(i, top, 1, hgt);
+
+      var rh = Math.max(1, c.rms * amp * 2);
+      g.fillStyle = nori ? COL_NORI : COL_AMBER_CORE;
+      g.fillRect(i, mid - rh / 2, 1, rh);
+
+      if (nori){
+        var f = c.sp;
+        if (f > 0.86){
+          g.fillStyle = COL_NORI_FLECK;
+          g.fillRect(i, top + hgt * (0.12 + f * 0.6), 1, 2);
+        }
+        if (f < 0.1){
+          g.fillStyle = "#0c1d13";
+          g.fillRect(i, top + hgt * (0.3 + f * 2), 1, 3);
+        }
+      }
+    }
+  }
+
+  /* ============ game state ============ */
+  var mode = "idle";               // idle | loading | countdown | play | paused | over | done
+  var elapsed = 0, score = 0, nori = 0;
+  var runToken = 0, activeKey = null, isDemo = false;
+  var underTime = 0, overTime = 0, shortTime = 0, noriMax = 0, noriHighTime = 0, floorAcc = 0;
+  var target = -13, demandIdx = 0;
+  var lufsRing = [], lufsSum = 0, lufsDuration = 0;
+  var crest1s = NaN, crestRing = [], crestDur = 0, peakHold = 0, peakHoldT = 0, trailT = 0;
+  var sumSq = 0, sumN = 0, crestAcc = 0, crestT = 0;
+  var bubbleTimer = 0, scopeDirty = true;
+  var fadingNode = null, fadeTimer = 0;
+
+  /* 終了時に曲をブツ切りにせずフェードアウトしてから停止 */
+  function killFading(){
+    if (fadeTimer){ clearTimeout(fadeTimer); fadeTimer = 0; }
+    if (fadingNode){
+      try { fadingNode.onended = null; fadingNode.stop(); } catch (e){}
+      try { fadingNode.disconnect(); } catch (e){}
+      fadingNode = null;
+    }
+  }
+  function fadeOutAndStop(){
+    var node = srcNode;
+    srcNode = null;
+    if (!node){ return; }
+    if (!ctx || !outGain){
+      try { node.onended = null; node.stop(); node.disconnect(); } catch (e){}
+      return;
+    }
+    killFading();
+    fadingNode = node;
+    var now = ctx.currentTime;
+    try {
+      outGain.gain.cancelScheduledValues(now);
+      outGain.gain.setValueAtTime(outGain.gain.value, now);
+      outGain.gain.linearRampToValueAtTime(0.0001, now + 0.9);
+    } catch (e){}
+    fadeTimer = window.setTimeout(killFading, 950);
+  }
+
+  // During play the scope absorbs the leftover viewport height so the console fits one screen.
+  function fitScope(){
+    if(!document.body.classList.contains("in-session")){scopeBox.style.height="";return;}
+    var vh=window.visualViewport?window.visualViewport.height:window.innerHeight;
+    var bs=getComputedStyle(document.body), unit=document.querySelector(".unit");
+    var rest=unit.offsetHeight-scopeBox.offsetHeight+parseFloat(bs.paddingTop)+parseFloat(bs.paddingBottom);
+    // Controls and meters come first; the scope gets what is left, up to a cap (it is the least decision-critical part).
+    var phone=scopeBox.clientWidth<720, cap=Math.min(phone?200:260, vh*(phone?0.28:0.32));
+    var h=Math.round(Math.min(Math.max(vh-rest,140),Math.max(cap,140)));
+    // Always pin an explicit height: with aspect-ratio off, an auto height would follow the canvas and grow.
+    if(scopeBox.style.height!==h+"px")scopeBox.style.height=h+"px";
+  }
+  window.addEventListener("resize",fitScope);
+  if(window.visualViewport)window.visualViewport.addEventListener("resize",fitScope);
+
+  function setScreen(el){
+    scrStart.hidden = (el !== scrStart);
+    scrOver.hidden = (el !== scrOver);
+    scrResult.hidden = (el !== scrResult);
+    $("performance").hidden = el !== null;
+    $("xyBox").hidden = el !== null;
+    if (el === null) resizeXY();
+    document.body.classList.toggle("in-session",el === null);
+    fitScope();
+  }
+
+  function updateTarget(){
+    var lo=target-0.5, hi=target+2;
+    $("targetBand").style.left=clamp((lo+30)/30,0,1)*100+"%";
+    $("targetBand").style.width=(hi-lo)/30*100+"%";
+    var guide="適正範囲 "+lo.toFixed(1)+" ～ "+hi.toFixed(1)+" LUFS";
+    if($("rangeGuide").textContent!==guide)$("rangeGuide").textContent=guide;
+  }
+  function fmtTime(s){
+    var m = Math.floor(s / 60), r = Math.floor(s % 60);
+    return m + ":" + (r < 10 ? "0" : "") + r;
+  }
+
+  function showBubble(text, who){
+    bubble.innerHTML = '<span></span>';
+    bubble.firstChild.textContent = who || (director ? director.p.who : "Client");
+    bubble.appendChild(document.createTextNode(text));
+    bubble.hidden = false;
+    bubbleTimer = 5.5;
+  }
+
+  function reset(){
+    score = 0; nori = 0; elapsed = 0;resetObserver();
+    underTime = overTime = shortTime = noriMax = noriHighTime = floorAcc = 0; gridPhase = 0;
+    gameChart = chartCache[isDemo ? "demo" : activeKey];   // start() calibrates it before play
+    run = new PerformanceRun(gameChart);
+    director = new ClientDirector(CLIENTS[isDemo ? "demo" : activeKey] || CLIENTS.demo);
+    putText("clientWho", director.p.who); renderMood();
+    fx = new Fx(); fxClear();
+    DEMANDS = gameChart.demands;
+    demandIdx = 0; target = DEMANDS[0].target;
+    lufsRing = []; lufsSum = 0; lufsDuration = 0; crest1s = NaN; crestRing = []; crestDur = 0; peakHold = 0; peakHoldT = 0;
+    xyTrail = []; trailT = 0; xyRange = radarRange(gameChart); curZone = zoneAt(gameChart, 0, 0); xyDirty = true;
+    sumSq = 0; sumN = 0; crestAcc = 0; crestT = 0;
+    bubble.hidden = true; bubbleTimer = 0;
+    for (var i = 0; i < hist.length; i++) hist[i] = blankCol();
+    hudTarget.textContent = "−" + Math.abs(target).toFixed(1);
+    hudTime.textContent = "0:00 / " + fmtTime(session);   // correct length already during the count-in
+    updateTarget();
+    renderPerformance(NaN,0);
+    vScore.textContent = "0";
+  }
+
+  function stopSource(){
+    if (srcNode){
+      try { srcNode.onended = null; srcNode.stop(); } catch (e){}
+      try { srcNode.disconnect(); } catch (e){}
+      srcNode = null;
+    }
+  }
+
+  function lockSelection(locked){
+    startBtn.disabled=locked;
+    for(var i=0;i<trkRadios.length;i++)trkRadios[i].disabled=locked;
+  }
+  function start(){
+    if(mode === "loading" || mode === "countdown" || mode === "play" || mode === "paused")return;
+    var token=++runToken, key=TRACKS[selectedKey]?selectedKey:"track01";
+    mode="loading";lockSelection(true);setScreen(scrStart);
+    bootMsg.textContent="音声を準備しています…";playBtn.textContent="■ 読み込みを中止";
+    Promise.resolve().then(function(){
+      ensureCtx();return ctx.resume();
+    }).then(function(){
+      showProgFor(key);
+      return Promise.all([Promise.all([prepareMeter(),prepareObserver()]),loadTrack(key).then(function(buf){return {buf:buf,demo:false};}).catch(function(){return getDemo().then(function(buf){return {buf:buf,demo:true};});})]);
+    }).then(function(results){
+      if(token!==runToken)return results;
+      if(results[1].demo)showProgFor("demo");
+      if(!chartCache[results[1].demo?"demo":key])bootMsg.textContent="課題を解析中…";
+      return chartFor(results[1].demo?"demo":key,results[1].buf).then(function(){return results;});
+    }).then(function(results){
+      if(token!==runToken)return;
+      if(document.hidden)throw new Error("画面に戻って開始してください");
+      stopSource();killFading();
+      track=results[1].buf;isDemo=results[1].demo;activeKey=key;
+      trackName=isDemo?"内蔵デモ（参考スコア）":trackLabel(key);srcName.textContent="SOURCE: "+trackName;
+      applyTiming(track.duration);reset();
+      outGain.gain.cancelScheduledValues(ctx.currentTime);outGain.gain.setValueAtTime(1,ctx.currentTime);
+      if(meterNode.port)meterNode.port.postMessage(runToken);
+      // Show the console first and count in; the faders already respond so the player can get set.
+      applyControls();
+      mode="countdown";$("pauseBtn").hidden=true;setScreen(null);playBtn.textContent="■ 停止";
+      countdown(token,COUNTDOWN);
+    }).catch(function(err){
+      if(token!==runToken)return;
+      mode="idle";lockSelection(false);setScreen(scrStart);playBtn.textContent="▶ 開始";
+      bootMsg.textContent="音声を開始できませんでした: "+err.message;
+    });
+  }
+  var COUNTDOWN = 3;
+  function countdown(token,n){
+    if(token!==runToken||mode!=="countdown")return;
+    if(document.hidden){
+      // Tab went away mid-count: start the count again when the player is back.
+      document.addEventListener("visibilitychange",function again(){
+        if(document.hidden)return;
+        document.removeEventListener("visibilitychange",again);countdown(token,COUNTDOWN);
+      });
+      return;
+    }
+    if(n>0){
+      SE.tick();popText(String(n),n===COUNTDOWN?trackName:"");
+      setTimeout(function(){countdown(token,n-1);},1000);
+      return;
+    }
+    SE.go();popText("START!");pulseClass(scopeBox,"flash",350);
+    srcNode=ctx.createBufferSource();srcNode.buffer=track;srcNode.connect(inGain);if(observerInput)srcNode.connect(observerInput);applyControls();
+    mode="play";$("pauseBtn").hidden=false;$("pauseBtn").textContent="Ⅱ 一時停止";
+    srcNode.start();lamp.classList.add("on");
+  }
+  function stop(){
+    ++runToken;stopSource();killFading();mode="idle";lockSelection(false);$("pauseBtn").hidden=true;
+    lamp.classList.remove("on");playBtn.textContent="▶ 開始";bubble.hidden=true;
+    setScreen(scrStart);bootMsg.textContent="課題曲を選んで開始してください";idleWave();scopeDirty=true;fxClear();
+  }
+  function pause(){
+    if(mode!=="play")return;
+    mode="paused";ctx.suspend();lamp.classList.remove("on");
+    $("pauseBtn").textContent="▶ 再開";showBubble("一時停止中。「再開」で続行。");
+  }
+  function resume(){
+    if(mode!=="paused")return;
+    var token=runToken;
+    ctx.resume().then(function(){
+      if(token!==runToken||mode!=="paused")return;
+      if(document.hidden){ctx.suspend();return;}
+      mode="play";$("pauseBtn").textContent="Ⅱ 一時停止";bubble.hidden=true;lamp.classList.add("on");playBtn.textContent="■ 停止";
+    }).catch(function(){showBubble("再開できませんでした。もう一度「再開」を押してください。");});
+  }
+
+  function applyControls(){
+    if (!ctx) return;
+    var gdb = parseFloat(gainEl.value);
+    var rms = parseFloat(relEl.value);
+    inGain.gain.setTargetAtTime(Math.pow(10, gdb / 20), ctx.currentTime, 0.02);
+    lim.release.setTargetAtTime(rms / 1000, ctx.currentTime, 0.02);
+    vGain.textContent = (gdb >= 0 ? "+" : "") + gdb.toFixed(1) + " dB";
+    vRel.textContent = Math.round(rms) + " ms";
+  }
+
+  /* ============ measurement ============ */
+  function measure(m){
+    var dt=Math.min(m.n/ctx.sampleRate,session-elapsed);
+    if(dt<=0)return;
+    var mx=m.mx,mn=m.mn,rms=Math.sqrt(m.sq/m.n),pk=Math.max(mx,-mn),kms=m.ksq/m.n;
+    lufsRing.push({power:kms,dt:dt});lufsSum+=kms*dt;lufsDuration+=dt;
+    while(lufsDuration>1+1e-9){
+      var first=lufsRing[0],remove=Math.min(first.dt,lufsDuration-1);
+      lufsSum-=first.power*remove;lufsDuration-=remove;first.dt-=remove;
+      if(first.dt<1e-9)lufsRing.shift();
+    }
+    var lufs=-0.691+10*Math.log10(Math.max(lufsSum/lufsDuration,1e-10));
+    sumSq += kms * dt; sumN += dt;
+
+    // 1秒窓のクレスト(ピーク − RMS)。レーダーの縦軸・採点・海苔すべてこの値で判定する。
+    crestRing.push({sq:m.sq,n:m.n,pk:pk,dt:dt});crestDur+=dt;
+    while(crestDur>1+1e-9&&crestRing.length>1){crestDur-=crestRing.shift().dt;}
+    if(crestDur>=0.9){
+      var csq=0,cn=0,cpk=0;
+      for(var ci=0;ci<crestRing.length;ci++){csq+=crestRing[ci].sq;cn+=crestRing[ci].n;cpk=Math.max(cpk,crestRing[ci].pk);}
+      var crms=Math.sqrt(csq/Math.max(cn,1));
+      crest1s=crms>1e-4?Math.min(24,Math.max(0,db(cpk)-db(crms))):NaN;
+    }
+
+    peakHoldT -= dt;
+    if (pk >= peakHold || peakHoldT <= 0){ peakHold = pk; peakHoldT = 0.9; }
+
+    // push column
+    var col = hist.length ? hist.shift() : blankCol();
+    col.max = clamp(mx, -1, 1); col.min = clamp(mn, -1, 1);
+    col.rms = clamp(rms, 0, 1); col.crush = lastShape ? (lastShape.state==='warning'?.08:lastShape.compressionRun>0?.015:0) : 0; col.sp = Math.random();
+    hist.push(col);
+    gridPhase += 1;
+
+
+    // Waveform-driven nori is updated on fixed-duration audio windows.
+    // Nori is integrated only by aligned 250ms waveform comparisons in showObserver.
+
+    // 要求音圧(target)の段階的な上昇 + クライアントの吹き出し
+    elapsed += dt;
+    while (demandIdx + 1 < DEMANDS.length && elapsed >= DEMANDS[demandIdx + 1].t){
+      demandIdx++;
+      target = DEMANDS[demandIdx].target;
+      hudTarget.textContent = "−" + Math.abs(target).toFixed(1);
+      // The challenge panel supplies the preview and objective.
+    }
+    if (bubbleTimer > 0){
+      bubbleTimer -= dt;
+      if (bubbleTimer <= 0) bubble.hidden = true;
+    }
+
+    // 得点は PerformanceRun が計算する。ここではリザルト用に「どちらの軸で外れたか」を集計する。
+    var lo = target - 0.5, hi = target + 2.0, zNow = curZone;
+    var floorNow = zNow && isFinite(zNow.floor) ? zNow.floor : NaN;
+    if (isFinite(lufs) && lufs < lo) underTime += dt;
+    else if (isFinite(lufs) && lufs > hi) overTime += dt;
+    else if (isFinite(lufs) && isFinite(crest1s) && isFinite(floorNow) && crest1s < floorNow) shortTime += dt;
+    if (isFinite(crest1s) && isFinite(floorNow)){ crestAcc += crest1s * dt; floorAcc += floorNow * dt; crestT += dt; }
+    noriMax = Math.max(noriMax, nori);
+    if (nori >= 65) noriHighTime += dt;
+
+    run.tick(dt,lufs,crest1s,nori,parseFloat(relEl.value));
+    score=run.total();
+    curZone=zoneAt(gameChart,run.time,run.index);
+    curRelBand=relBandAt(gameChart,run.time);
+    trailT+=dt;
+    if(trailT>=0.1&&isFinite(lufs)&&isFinite(crest1s)){trailT=0;xyTrail.push({L:lufs,c:crest1s});if(xyTrail.length>24)xyTrail.shift();}
+    xyDirty=true;
+    director.update(run,curZone,lufs,dt);
+    fx.update(run,dt);
+    renderMood();
+    renderPerformance(lufs,crest1s);
+    scopeDirty=true;
+    updateTarget();
+    // meters
+    var lp = clamp((lufs + 30) / 30, 0, 1);
+    fLufs.style.right = (100 - lp * 100) + "%";
+    vLufs.textContent = isFinite(lufs) && lufs > -60 ? lufs.toFixed(1) : "−∞";
+    kLufs.style.left = clamp((target + 30) / 30, 0, 1) * 100 + "%";
+
+    fCrest.style.right = (100 - clamp((isFinite(crest1s) ? crest1s : 0) / 20, 0, 1) * 100) + "%";
+    vCrest.textContent = isFinite(crest1s) ? crest1s.toFixed(1) : "—";
+    var kc = $("kCrest"), fl = curZone ? curZone.floor : NaN;
+    kc.hidden = !isFinite(fl);
+    if (isFinite(fl)) kc.style.left = clamp(fl / 20, 0, 1) * 100 + "%";
+
+    var pdb = db(peakHold);
+    vPeak.textContent = pdb > -60 ? pdb.toFixed(2) : "−∞";
+    fPeak.style.right = (100 - clamp((pdb + 24) / 24, 0, 1) * 100) + "%";
+    mPeak.classList.toggle("over", pdb > CEIL_DB - 0.02);
+
+    fNori.style.right = (100 - nori) + "%";
+    vNori.textContent = Math.round(nori) + (noriRate > 0.05 && nori < 100 ? " ▲" : (noriRate < -0.05 && nori > 0 ? " ▼" : ""));
+    vScore.textContent = Math.round(score).toLocaleString("en-US");
+    hudTime.textContent = fmtTime(Math.min(elapsed, session)) + " / " + fmtTime(session);
+
+    if (nori >= 100) finish(true);
+    else if (elapsed >= session) finish(false);
+  }
+
+  function statCell(label, value, cls){
+    return '<div><dt>' + label + '</dt><dd' + (cls ? ' class="' + cls + '"' : '') + '>' + value + '</dd></div>';
+  }
+
+  function finish(failed){
+    fadeOutAndStop();
+    lockSelection(false);
+    mode = failed ? "over" : "done";
+    $("pauseBtn").hidden=true;
+    lamp.classList.remove("on");
+    playBtn.textContent = "▶ 開始";
+    bubble.hidden = true;
+    fxClear();
+
+    var integrated = sumN > 0 ? -0.691 + 10 * Math.log10(Math.max(sumSq / sumN, 1e-10)) : -70;
+    var avgCrest = crestT > 0 ? crestAcc / crestT : NaN, avgFloor = crestT > 0 ? floorAcc / crestT : NaN;
+    var span = Math.max(elapsed, 0.001), pctOf = function(t){ return Math.round(t / span * 100); };
+    // The client's mood becomes a satisfaction bonus when the track is delivered (not on a nori game over).
+    var mood = Math.round(run.mood), moodBonus = failed ? 0 : run.moodBonus();
+    score += moodBonus;
+    vScore.textContent = Math.round(score).toLocaleString("en-US");
+    var par = currentPar();
+    var pct = par > 0 ? score / par : 0;
+
+    var cells =
+      statCell("Score", Math.round(score).toLocaleString("en-US")) +
+      statCell("攻略率", Math.floor(pct * 100 + 1e-9) + " %", pct >= RANK.master ? "good" : (pct < RANK.assistant ? "bad" : "")) +
+      statCell("通常点", Math.round(run.base).toLocaleString("en-US")) +
+      statCell("安定点", Math.round(run.precision).toLocaleString("en-US")) +
+      statCell("課題点", Math.round(run.missionScore).toLocaleString("en-US")) +
+      statCell("課題クリア", run.successes()+" / "+gameChart.missions.length) +
+      statCell("クライアント満足度", moodFace(mood) + " " + mood, mood >= MOOD.ok ? "good" : (mood < MOOD.retake ? "bad" : "")) +
+      (failed ? statCell("中断時間", fmtTime(Math.min(elapsed, session))) : statCell("満足度ボーナス", moodBonus.toLocaleString("en-US"))) +
+      statCell("枠内キープ", pctOf(run.precisionTime) + " %") +
+      statCell("音圧 不足 / 過剰", pctOf(underTime) + " / " + pctOf(overTime) + " %", underTime + overTime > span * 0.25 ? "bad" : "") +
+      statCell("山不足", pctOf(shortTime) + " %", shortTime > span * 0.15 ? "bad" : "") +
+      statCell("クレスト/目標 dB", isFinite(avgCrest) ? avgCrest.toFixed(1) + " / " + avgFloor.toFixed(1) : "—",
+        isFinite(avgCrest) ? (avgCrest >= avgFloor ? "good" : "bad") : "") +
+      statCell("平均音圧（近似）", integrated.toFixed(1) + " LUFS") +
+      statCell("海苔 最大", Math.round(noriMax), noriMax >= 65 ? "bad" : (noriMax < 30 ? "good" : ""));
+
+    if (failed){
+      $("overStats").innerHTML = cells;
+      $("overMsg").textContent =
+        "波形の山(クレスト)が潰れた状態が続き、海苔が振り切れました。GAINを下げて山を戻すと回復し、RELEASEを緑の範囲に合わせると海苔がたまりにくくなります。";
+      setScreen(scrOver);
+      return;
+    }
+
+    var j = judgeDelivery({ pct: pct, mood: mood, successes: run.successes(), missions: gameChart.missions.length,
+      span: span, under: underTime, over: overTime, short: shortTime, noriHigh: noriHighTime });
+    var rank = j.rank, note = j.advice;
+
+    var normTxt = note + " 攻略率は通常点・安定点・課題点・満足度ボーナスの合計を満点と比べた値です。同じ曲は同じ課題で再挑戦できます。";
+
+    var who = director.p.who;
+    if (j.verdict === "ok"){ $("resTitle").textContent = "一発OK！ 納品完了"; normTxt = who + "「ありがとうございます、このまま使います！」 " + normTxt; }
+    else if (j.verdict === "minor"){ $("resTitle").textContent = "納品完了（軽い修正あり）"; normTxt = who + "「だいたいOKです。細かいところは後で相談させてください」 " + normTxt; }
+    else { $("resTitle").textContent = "リテイク…"; normTxt = who + "「すみません、もう一度お願いできますか…」 満足度が" + MOOD.retake + "未満のためリテイクです。 " + normTxt; }
+    $("resRank").textContent = rank;
+    $("resStats").innerHTML = cells;
+    $("resNorm").textContent = normTxt;
+    setScreen(scrResult);
+  }
+
+  /* ============ loop ============ */
+  function frame(){
+    requestAnimationFrame(frame);
+    if(scopeDirty){drawScope();scopeDirty=false;}
+    if(xyDirty){drawXY();xyDirty=false;}
+  }
+
+  /* ============ events ============ */
+  document.addEventListener("visibilitychange",function(){if(document.hidden)pause();});
+  gainEl.addEventListener("input", applyControls);
+  relEl.addEventListener("input", applyControls);
+
+  playBtn.addEventListener("click", function(){
+    if(mode === "play" || mode === "paused" || mode === "loading" || mode === "countdown")stop();else start();
+  });
+  $("pauseBtn").addEventListener("click",function(){if(mode==="paused")resume();else pause();});
+  startBtn.addEventListener("click", start);
+  function renderSe(){var b=$("seBtn");b.textContent=seOn?"SE ON":"SE OFF";b.setAttribute("aria-pressed",String(seOn));}
+  $("seBtn").addEventListener("click",function(){
+    seOn=!seOn;renderSe();
+    try{localStorage.setItem("ng1.se",seOn?"on":"off");}catch(e){}
+  });
+  renderSe();
+  $("overRetry").addEventListener("click", start);
+  $("resRetry").addEventListener("click", start);
+  $("overTitle").addEventListener("click", stop);   // タイトル画面へ戻る
+  $("resTitleBtn").addEventListener("click", stop);
+
+  /* 課題曲の選択 */
+  var trkRadios = document.querySelectorAll('input[name="trk"]');
+  function setTrackRadios(){
+    for (var i = 0; i < trkRadios.length; i++){
+      trkRadios[i].checked = (trkRadios[i].value === selectedKey);
+    }
+  }
+  function preloadSelection(){
+    var key=selectedKey;
+    srcName.textContent="SOURCE: "+trackLabel(key);
+    bootMsg.textContent="課題曲「"+TRACKS[key].name+"」を読み込み中…";
+    $("pickBtn").hidden=true;
+    showProgFor(key);
+    loadTrack(key).then(function(buf){
+      if(selectedKey===key && mode==="idle")bootMsg.textContent="課題曲「"+TRACKS[key].name+"」の課題を解析中…";
+      return chartFor(key,buf);
+    }).then(function(){
+      if(selectedKey===key && mode==="idle")bootMsg.textContent="課題曲「"+TRACKS[key].name+"」— ▶ 開始 を押してください";
+    }).catch(function(e){
+      if(selectedKey===key && mode==="idle"){
+        bootMsg.textContent="「"+TRACKS[key].name+"」を読み込めません："+e.message+"。このまま開始すると内蔵デモになります。「音声ファイルを選ぶ」で直接指定もできます。";
+        $("pickBtn").hidden=false;
+      }
+    });
+  }
+  // Manual fallback: decode a file the player picks and use it for the selected track.
+  $("pickBtn").addEventListener("click",function(){ $("pickFile").click(); });
+  $("pickFile").addEventListener("change",function(){
+    var f=this.files&&this.files[0], key=selectedKey;this.value="";
+    if(!f||mode!=="idle")return;
+    bootMsg.textContent="「"+f.name+"」を読み込み中…";
+    ensureCtx();
+    f.arrayBuffer().then(function(ab){return ctx.decodeAudioData(ab);}).then(function(buf){
+      bufCache[key]=buf;pendCache[key]=null;delete chartCache[key];delete chartPending[key];
+      if(selectedKey===key)preloadSelection();
+    }).catch(function(){ if(selectedKey===key)bootMsg.textContent="「"+f.name+"」を音声として読み込めませんでした。"; });
+  });
+  for(var ri=0;ri<trkRadios.length;ri++)trkRadios[ri].addEventListener("change",function(){
+    if(mode!=="idle")return;selectedKey=this.value;preloadSelection();
+  });
+
+
+  if (window.ResizeObserver){
+    new ResizeObserver(function(){
+      var was = mode;
+      resize();
+      if (was === "idle") idleWave();
+    }).observe(scopeBox);
+  } else {
+    window.addEventListener("resize", function(){ resize(); if (mode === "idle") idleWave(); });
+  }
+
+  /* ============ boot ============ */
+  function boot(){
+    resize();
+    idleWave();
+    setScreen(scrStart);
+    kLufs.style.left = ((target + 30) / 30 * 100) + "%";   // 音圧目標マーカー
+    updateTarget();
+    setTrackRadios();
+    preloadSelection();
+    requestAnimationFrame(frame);
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
