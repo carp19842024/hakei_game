@@ -15,7 +15,7 @@
   [hidden]{display:none!important}
 .shape-feedback{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:12px;font:12px/1.5 system-ui;color:#314637}.shape-feedback span{flex-basis:100%;font-size:11px}.shape-feedback b{font-weight:600}
 </style>
-<title>音圧の達人～波形をコントロールせよ～（ポンピング比較版）</title>
+<title>音圧の達人～波形をコントロールせよ～</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
@@ -324,13 +324,11 @@
   .need-mark span{position:absolute;left:0;bottom:1px;transform:translateX(-50%);white-space:nowrap;font-family:var(--mono);font-size:10px;font-weight:600;
     line-height:13px;color:#fff;background:var(--amber);border-radius:2px;padding:0 4px}
   .fader.need.ok .need-mark span,.fader.need.ok .need-mark::before{background:#5ea644}
-  .exp-badge{margin-left:12px;font-size:11px;font-weight:700;color:#7a4a10;background:rgba(242,166,59,.35);border:1px solid rgba(122,74,16,.4);border-radius:3px;padding:1px 7px;white-space:nowrap}
   .gr.pump{margin-top:3px}
   .gr.pump .gr__bar i{left:0;right:auto;background:linear-gradient(90deg,#5fa8a0,#9bc9a8)}
   .gr.pump.over .gr__bar i{background:linear-gradient(90deg,#f2a63b,#cc3b2a)}
   .gr.pump.over #vPump{color:var(--red)}
   .pump__thr{position:absolute;top:-2px;bottom:-2px;width:2px;background:#e8e2d3;opacity:.8}
-  @media (max-width:720px){.exp-badge{font-size:9.5px;padding:0 5px;margin-left:auto}.exp-long{display:none}.exp-badge + .se-toggle{margin-left:6px}}
   .m__mark.floor{background:#b9ff9b;box-shadow:0 0 4px rgba(143,224,106,.9)}
 
   /* ---------- 2D radar: loudness (x) × crest (y) ---------- */
@@ -609,7 +607,6 @@
     <div class="head">
       <div class="brand"><span class="lamp" id="lamp"></span>NG&#8209;1<em>Nori&nbsp;Guard</em></div>
       <div class="head-sub">Mastering Limiter / Loudness War Edition</div>
-      <span class="exp-badge" title="ポンピング（うねり）を実測してペナルティにする比較用の試作版">比較版<span class="exp-long">：ポンピング</span></span>
       <button class="se-toggle" id="seBtn" type="button" aria-pressed="true">SE ON</button>
     </div>
 
