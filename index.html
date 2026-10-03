@@ -624,7 +624,12 @@
           <span class="tracksel__lab">課題曲を選ぶ</span>
           <div class="tracksel__list">
             <label class="trk">
-              <input type="radio" name="trk" value="track02" checked>
+              <input type="radio" name="trk" value="track06">
+              <span class="trk__name">のりのりNightmare</span>
+              <span class="trk__meta"><span class="trk__gen">CHIPTUNE</span></span>
+            </label>
+            <label class="trk">
+              <input type="radio" name="trk" value="track02">
               <span class="trk__name">ごめんね、のりです。</span>
               <span class="trk__meta"><span class="trk__gen">IDOL CITY POP</span></span>
             </label>
@@ -647,11 +652,6 @@
               <input type="radio" name="trk" value="track05">
               <span class="trk__name">DAI-PAN</span>
               <span class="trk__meta"><span class="trk__gen">JERSEY CLUB</span></span>
-            </label>
-            <label class="trk">
-              <input type="radio" name="trk" value="track06">
-              <span class="trk__name">のりのりNightmare</span>
-              <span class="trk__meta"><span class="trk__gen">CHIPTUNE</span></span>
             </label>
           </div>
         </div>
@@ -1438,7 +1438,7 @@
   function trackLabel(key){ var d = TRACKS[key]; return d.name + " (" + d.genre + ")"; }
   function currentPar(){ return gameChart ? gameChart.maxScore : 1; }
 
-  var selectedKey = "track02";        // 初回に選択しておく曲
+  var selectedKey = "track06";        // 初回に選択しておく曲（リスト先頭）
   var bufCache = {}, pendCache = {};  // 課題曲のデコード済みバッファ / 読込中Promise
 
   var ctx = null, srcNode = null, inGain = null, lim = null, shaper = null, outGain = null;
