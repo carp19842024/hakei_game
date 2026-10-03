@@ -681,7 +681,7 @@
           <span class="howto__lab">遊び方</span>
           <ol>
             <li>右上の<b>レーダー</b>は 横＝音圧(LUFS)、縦＝山(クレスト)。光る点を<b>緑の枠</b>に入れよう。</li>
-            <li><b>GAINを上げると点は右下へ</b>（大きく・平らに）。<b>RELEASE</b>は歪みの調整：短いほど同じGAINで音圧が出るが<b>海苔がたまりやすく</b>、長いほど<b>きれい</b>だが音圧が下がります。強く攻めたまま<b>中くらい（100〜200ms）</b>だと<b>うねり（ポンピング）</b>が出て、依頼主の機嫌と通常点が下がります（GRの下の「うねり」メーター）。</li>
+            <li><b>GAINを上げると点は右下へ</b>（大きく・平らに）。<b>RELEASE</b>は歪みの調整：短いほど同じGAINで音圧が出るが<b>海苔がたまりやすく</b>、長いほど<b>きれい</b>だが音圧が下がります。強く攻めたまま<b>中くらい（100〜200ms）</b>だと<b>うねり（ポンピング）</b>が出て、通常点が少し下がり、続くと依頼主が文句を言って機嫌が下がります（GRの下の「うねり」メーター）。</li>
             <li>枠の<b>中心に近いほど高得点</b>。枠内に居続けると<b>安定ボーナス</b>が加点されます。</li>
             <li><b>クライアントの依頼</b>が5秒前に届き、<b>オレンジの枠</b>が出現。「音圧を上げて」は右へ、「山を残して」は上へ、「静かなパートは静かに」は左へ、「歪みを抑えて」はRELEASEを長く。課題ごとの条件が足りないと枠が点線になります。10秒中<b>合計5秒</b>で+200点。</li>
             <li>クライアントの<b>機嫌</b>は課題の成否や音の状態で上下し、最後に<b>満足度ボーナス</b>に。40未満だと<b>リテイク</b>。たまに来る<b>無茶振り</b>は失敗しても機嫌はあまり下がりません。</li>
@@ -1101,7 +1101,7 @@
       }
       // y: at or above the floor is full marks; sinking below fades out over 2.5 dB.
       var yF=!hasC?0:(crest>=floor?1:clamp(1-(floor-crest)/2.5,0,1));
-      this.base+=length*32*xF*yF*(1-clamp(nori,0,100)/220)*(1-PUMP.score*pump);   // うねりは通常点を最大25%減らす
+      this.base+=length*32*xF*yF*(1-clamp(nori,0,100)/220)*(1-PUMP.score*pump);   // うねりは通常点を最大10%減らす
       var precise=hasL && hasC && lufs>=z.lo && lufs<=z.hi && crest>=floor && nori<65;
       var onTask=z.mission && precise && lufs>=z.mLo-1e-8 && lufs<=z.mHi+1e-8 && !(crest<z.mFloor)
         && !(z.needRel && !(rel>=z.needRel)) && !(z.noriCap && nori>=z.noriCap);
@@ -1110,7 +1110,6 @@
       var dm=precise?0.4:0;
       if(nori>=65)dm-=2;
       if(hasL&&lufs>z.hi+1)dm-=0.6;else if(hasL&&lufs<z.lo-1)dm-=0.4;
-      dm-=PUMP.mood*pump;                                    // うねりは依頼主の耳に障る
       this.mood=clamp(this.mood+dm*length,0,100);
       if(precise){
         var old=this.hold;this.hold+=length;this.miss=0;this.precisionTime+=length;
@@ -1370,7 +1369,9 @@
     if(this.overT>4){this.overT=0;this.say(t,LINES.over);return;}
     if(this.underT>6){this.underT=0;this.say(t,LINES.under);return;}
     this.pumpT=pumpSev>0.3?(this.pumpT||0)+dt:0;
-    if(this.pumpT>3&&t-(f.pumpAt||-99)>20){f.pumpAt=t;this.pumpT=0;this.say(t,"なんか音がうねってません？");return;}
+    if(this.pumpT>PUMP.complainAfter&&t-(f.pumpAt||-99)>PUMP.complainEvery){
+      f.pumpAt=t;this.pumpT=0;run.mood=clamp(run.mood-PUMP.complainMood,0,100);   // 文句を言ったときだけ機嫌が下がる
+      this.say(t,"なんか音がうねってません？",true);return;}
     if(run.mood<35&&!f.low){f.low=true;this.say(t,LINES.moodLow);return;}
     if(run.mood>50)f.low=false;
     if(run.hold>12&&t-(f.happyAt||-99)>30){f.happyAt=t;this.say(t,LINES.happy);return;}
@@ -2202,7 +2203,9 @@
   // Pumping, measured: how much the limiter's gain reduction moves within the last second (std, dB).
   // Offline checks on the real tracks: it grows with how hard the limiter works and peaks around 100-200 ms
   // release when pushed (short release distorts instead, long release just turns the mix down).
-  var PUMP = { thr:0.9, span:0.6, mood:1.5, score:0.25, scale:2.5 };
+  // thr: only clearly large swings count (music itself moves the limiter on kicks and section changes).
+  // Mood is not drained continuously: the client complains after 4 s of pumping (-4 mood, at most every 25 s).
+  var PUMP = { thr:1.3, span:0.8, score:0.10, scale:2.5, complainAfter:4, complainEvery:25, complainMood:4 };
   var grRing=[], grDur=0, pump1s=0, pumpSev=0;
   function updatePump(dt){
     var rv=lim?lim.reduction:0, gr=Math.max(0,-(typeof rv==="number"?rv:(rv&&rv.value)||0));
