@@ -1374,13 +1374,21 @@
   var seOn=true, seBus=null, fx=null;
   try{seOn=localStorage.getItem("ng1.se")!=="off";}catch(e){}
   // Effects go straight to the speakers: they never pass the limiter or the meters, so they cannot affect scoring.
+  var SE_LEVEL = 1.25, SE_DUCK = 0.56;   // SE bus gain (was 0.5) and music level under an effect (≈ -5 dB)
   function blip(freq,at,len,type,vol,slideTo){
     if(!seOn||!ctx)return;
-    if(!seBus){seBus=ctx.createGain();seBus.gain.value=0.5;seBus.connect(ctx.destination);}
+    if(!seBus){
+      // SE bus: louder than before, with its own limiter so overlapping blips stay below about -9 dBFS.
+      seBus=ctx.createGain();seBus.gain.value=SE_LEVEL;
+      var seLim=ctx.createDynamicsCompressor();seLim.threshold.value=-10;seLim.knee.value=0;seLim.ratio.value=20;seLim.attack.value=.001;seLim.release.value=.08;
+      seBus.connect(seLim).connect(ctx.destination);
+    }
     var t=ctx.currentTime+(at||0),o=ctx.createOscillator(),g=ctx.createGain();
     o.type=type||"sine";o.frequency.setValueAtTime(freq,t);
     if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,t+len);
     g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol||0.12,t+0.008);g.gain.exponentialRampToValueAtTime(0.0001,t+len);
+    // Duck only what the player hears (-5 dB) while the effect sounds, so it cuts through without clipping.
+    if(monitor){var mg=monitor.gain;mg.cancelScheduledValues(t);mg.setTargetAtTime(SE_DUCK,t,0.01);mg.setTargetAtTime(1,t+len+0.03,0.06);}
     o.connect(g).connect(seBus);o.start(t);o.stop(t+len+0.02);
   }
   var SE={
@@ -1441,7 +1449,7 @@
   var selectedKey = "track06";        // 初回に選択しておく曲（リスト先頭）
   var bufCache = {}, pendCache = {};  // 課題曲のデコード済みバッファ / 読込中Promise
 
-  var ctx = null, srcNode = null, inGain = null, lim = null, shaper = null, outGain = null;
+  var ctx = null, srcNode = null, inGain = null, lim = null, shaper = null, outGain = null, monitor = null;
   var meterNode = null, meterReady = null, hp = null, hs = null;
   var track = null, trackName = trackLabel("track01"), demoBuf = null, demoPending = null;
 
@@ -1488,7 +1496,8 @@
 
     inGain.connect(lim).connect(shaper).connect(outGain);
     outGain.connect(hp).connect(hs);
-    outGain.connect(ctx.destination);
+    monitor = ctx.createGain();                 // 聴こえる音だけを通す（SE時のダッキング用）。メーターは outGain を測る
+    outGain.connect(monitor).connect(ctx.destination);
     return ctx;
   }
 
